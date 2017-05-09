@@ -77,7 +77,7 @@ class RigidBicopter:
     # We could introduce a controller by making F_n a function of the observed (aka noisy, estimated) state
     def step(self, dt):    
         F_g = self.kg["d"] * self.g_m_per_s2    
-        F_n = array([-3.06*F_g/2, -3.00*F_g/2, F_g])    
+        F_n = array([-1.02*F_g/2, -1.00*F_g/2, F_g])     # Right motor thrust, left motor thrust, gravitational force
         self.state = integrate.odeint(self.dstate_dt, self.state, [0, dt], args=(F_n,))[1]
         self.t_s += dt
 
