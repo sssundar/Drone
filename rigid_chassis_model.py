@@ -77,7 +77,77 @@ class RigidBicopter:
     # We could introduce a controller by making F_n a function of the observed (aka noisy, estimated) state
     def step(self, dt):    
         F_g = self.kg["d"] * self.g_m_per_s2    
-        F_n = array([-1.02*F_g/2, -1.00*F_g/2, F_g])     # Right motor thrust, left motor thrust, gravitational force
+        F_r = 0
+        F_l = 0
+
+        # Let's say we're trying to control x, y to 0,0
+        # Assume we know our state perfectly.
+        # Enforce motor thrust between >= 0 and <= -F_g eachself.
+        # Enforce an orientation target that is strictly between -pi/12 and pi/12
+        
+        (thetadot, xdot, ydot, theta, x, y) = self.state
+
+        if abs(x) <= 1:
+            theta_ref = x*pi/12    
+        elif x > 0:
+            theta_ref = pi/12
+        else:
+            theta_ref = -pi/12
+
+        max_upward_thrust = 0.01
+        if y > 0:
+            required_y_thrust = -F_g - max_upward_thrust
+        else:
+            required_y_thrust = -F_g + max_upward_thrust
+        
+        # Given our orientation what summed thrust from our motors do we need?
+        if cos(theta) > 0:
+            thrust = required_y_thrust / cos(theta)
+        else:
+            thrust = 0 # We're screwed
+            print "We gave up"
+
+        # Clip this thrust per motor to be within [0,-F_g]
+        base_thrust = thrust/2
+        if base_thrust < 0:
+            base_thrust = 0
+        if base_thrust > -F_g:
+            base_thrust = -F_g
+
+        # Given the thrust bound, and the orientation we're targeting, apply a 2% torque mismatch between our ideal motors 
+        # to rotate us in the right direction
+
+        # # Attempt 1: Goes open-loop too often so we have little x-control
+        # if theta < theta_ref:
+        #     if thetadot <= 0:
+        #         F_r = 1.01*base_thrust
+        #         F_l = 0.99*base_thrust
+        #     elif thetadot < 0.01:
+        #         F_r = 1.005*base_thrust
+        #         F_l = 0.995*base_thrust
+        #     else:
+        #         F_r = base_thrust
+        #         F_l = base_thrust
+        # elif theta > theta_ref:
+        #     if thetadot >= 0:
+        #         F_l = 1.01*base_thrust
+        #         F_r = 0.99*base_thrust
+        #     elif thetadot > -0.01:
+        #         F_l = 1.005*base_thrust
+        #         F_r = 0.995*base_thrust
+        #     else:
+        #         F_r = base_thrust
+        #         F_l = base_thrust
+
+        # Attempt 2: Proportional control. Very violent.
+        k_p = 1.0/pi
+        orientation_error = k_p*(theta_ref-theta)
+        if (abs(orientation_error) > 0.01):
+            orientation_error = 0.01 if orientation_error > 0 else -0.01
+        F_r = (1 + orientation_error)*base_thrust
+        F_l = (1 - orientation_error)*base_thrust
+
+        F_n = array([F_r, F_l, F_g])     # Right motor thrust, left motor thrust, gravitational force
         self.state = integrate.odeint(self.dstate_dt, self.state, [0, dt], args=(F_n,))[1]
         self.t_s += dt
 
@@ -89,7 +159,7 @@ bicopter = RigidBicopter()
 dt = 1./60 # fps
 
 fig = plt.figure()
-ax = fig.add_subplot(111, aspect='equal', autoscale_on=False, xlim=(-30,10), ylim=(-20,10))
+ax = fig.add_subplot(111, aspect='equal', autoscale_on=False, xlim=(-1,1), ylim=(-1,1))
 ax.grid()
 
 line, = ax.plot([], [], 'o-', lw=2)
@@ -102,9 +172,9 @@ def init():
 
 def animate(i):
     global bicopter, dt
-    # This lets us repeat the simulation instead of having the bicopter fly out of frame
-    if i == 0:
-        bicopter = RigidBicopter()
+    # This lets us repeat the simulation from the start, if we wish
+    # if i == 0:
+    #     bicopter = RigidBicopter()
     bicopter.step(dt)    
     line.set_data(*bicopter.draw())        
     time_text.set_text('time = %0.1f' % bicopter.t_s)
