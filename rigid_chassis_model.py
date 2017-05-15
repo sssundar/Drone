@@ -88,14 +88,16 @@ class RigidBicopter:
         (thetadot, xdot, ydot, theta, x, y) = self.state
 
         if abs(x) <= 1:
-            theta_ref = x*pi/12    
+            theta_ref = x*pi/24    
         elif x > 0:
-            theta_ref = pi/12
+            theta_ref = pi/24
         else:
-            theta_ref = -pi/12
+            theta_ref = -pi/24
 
         max_upward_thrust = 0.01
-        if y > 0:
+        if abs(y) <= 1:
+            required_y_thrust = -F_g + y*max_upward_thrust
+        elif y > 0:
             required_y_thrust = -F_g - max_upward_thrust
         else:
             required_y_thrust = -F_g + max_upward_thrust
@@ -114,32 +116,7 @@ class RigidBicopter:
         if base_thrust > -F_g:
             base_thrust = -F_g
 
-        # Given the thrust bound, and the orientation we're targeting, apply a 2% torque mismatch between our ideal motors 
-        # to rotate us in the right direction
-
-        # # Attempt 1: Goes open-loop too often so we have little x-control
-        # if theta < theta_ref:
-        #     if thetadot <= 0:
-        #         F_r = 1.01*base_thrust
-        #         F_l = 0.99*base_thrust
-        #     elif thetadot < 0.01:
-        #         F_r = 1.005*base_thrust
-        #         F_l = 0.995*base_thrust
-        #     else:
-        #         F_r = base_thrust
-        #         F_l = base_thrust
-        # elif theta > theta_ref:
-        #     if thetadot >= 0:
-        #         F_l = 1.01*base_thrust
-        #         F_r = 0.99*base_thrust
-        #     elif thetadot > -0.01:
-        #         F_l = 1.005*base_thrust
-        #         F_r = 0.995*base_thrust
-        #     else:
-        #         F_r = base_thrust
-        #         F_l = base_thrust
-
-        # Attempt 2: Proportional control. Very violent.
+        # Given the thrust bound, and the orientation we're targeting, apply a torque! 
         k_p = 1.0/pi
         orientation_error = k_p*(theta_ref-theta)
         if (abs(orientation_error) > 0.01):
@@ -155,11 +132,12 @@ class RigidBicopter:
 # Animation code entirely copied from Reference 1 #
 ###################################################
 
-bicopter = RigidBicopter()
+an_init_state = [0,0,0,0,0.1,0]
+bicopter = RigidBicopter(an_init_state)
 dt = 1./60 # fps
 
 fig = plt.figure()
-ax = fig.add_subplot(111, aspect='equal', autoscale_on=False, xlim=(-1,1), ylim=(-1,1))
+ax = fig.add_subplot(111, aspect='equal', autoscale_on=False, xlim=(-10,10), ylim=(-10,10))
 ax.grid()
 
 line, = ax.plot([], [], 'o-', lw=2)
@@ -174,7 +152,7 @@ def animate(i):
     global bicopter, dt
     # This lets us repeat the simulation from the start, if we wish
     # if i == 0:
-    #     bicopter = RigidBicopter()
+    #     bicopter = RigidBicopter(an_init_state)
     bicopter.step(dt)    
     line.set_data(*bicopter.draw())        
     time_text.set_text('time = %0.1f' % bicopter.t_s)
@@ -186,7 +164,7 @@ animate(0)
 t1 = time()
 interval = 1000 * dt - (t1 - t0)
 
-ani = animation.FuncAnimation(fig, animate, frames=200, repeat=True, interval=interval, blit=True, init_func=init)
-#ani.save('bicopter.mp4', fps=60, extra_args=['-vcodec', 'libx264'])
+ani = animation.FuncAnimation(fig, animate, frames=4000, repeat=False, interval=interval, blit=True, init_func=init)
+ani.save('bicopter.mp4', fps=60, extra_args=['-vcodec', 'libx264'])
 
-plt.show()
+#plt.show()
