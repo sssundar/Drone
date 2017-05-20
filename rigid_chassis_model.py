@@ -53,6 +53,8 @@ class RigidBicopter:
         
         # Simulation (time, state)
         self.t_s= 0
+        self.fl_g = 0
+        self.fr_g = 0
         self.state = asarray(init_state)
 
     # This draws the line that is the bicopter
@@ -118,7 +120,8 @@ class RigidBicopter:
 
         # Given the thrust bound, and the orientation we're targeting, apply a torque! 
         k_p = 1.0/pi
-        orientation_error = k_p*(theta_ref-theta)
+        k_d = 0.005
+        orientation_error = k_p*(theta_ref-theta) - k_d*thetadot
         if (abs(orientation_error) > 0.01):
             orientation_error = 0.01 if orientation_error > 0 else -0.01
         F_r = (1 + orientation_error)*base_thrust
@@ -127,6 +130,8 @@ class RigidBicopter:
         F_n = array([F_r, F_l, F_g])     # Right motor thrust, left motor thrust, gravitational force
         self.state = integrate.odeint(self.dstate_dt, self.state, [0, dt], args=(F_n,))[1]
         self.t_s += dt
+        self.fl_g = F_l / abs(F_g)
+        self.fr_g = F_r / abs(F_g)
 
 ###################################################
 # Animation code entirely copied from Reference 1 #
@@ -142,11 +147,15 @@ ax.grid()
 
 line, = ax.plot([], [], 'o-', lw=2)
 time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
+left_thrust_text = ax.text(0.02, 0.90, '', transform=ax.transAxes)
+right_thrust_text = ax.text(0.02, 0.85, '', transform=ax.transAxes)
 
 def init():
     line.set_data([],[])
     time_text.set_text('')
-    return line, time_text
+    left_thrust_text.set_text('')
+    right_thrust_text.set_text('')
+    return line, time_text, left_thrust_text, right_thrust_text
 
 def animate(i):
     global bicopter, dt
@@ -156,7 +165,9 @@ def animate(i):
     bicopter.step(dt)    
     line.set_data(*bicopter.draw())        
     time_text.set_text('time = %0.1f' % bicopter.t_s)
-    return line, time_text
+    left_thrust_text.set_text('Fl = %0.5f' % bicopter.fl_g) 
+    right_thrust_text.set_text('Fr = %0.5f' % bicopter.fr_g)
+    return line, time_text, left_thrust_text, right_thrust_text
 
 # This delays between frames so time in real life is time in the animation
 t0 = time()
