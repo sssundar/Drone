@@ -98,7 +98,7 @@ class RigidBicopter:
 
         max_upward_thrust = 0.01
         if abs(y) <= 1:
-            required_y_thrust = -F_g + y*max_upward_thrust
+            required_y_thrust = -F_g - y*max_upward_thrust
         elif y > 0:
             required_y_thrust = -F_g - max_upward_thrust
         else:
@@ -137,7 +137,7 @@ class RigidBicopter:
 # Animation code entirely copied from Reference 1 #
 ###################################################
 
-an_init_state = [0,0,0,0,0.1,0]
+an_init_state = [0,0,0,0,1,3]
 bicopter = RigidBicopter(an_init_state)
 dt = 1./60 # fps
 
