@@ -267,7 +267,8 @@ animate(0)
 t1 = time()
 interval = 1000 * dt - (t1 - t0)
 
-ani = animation.FuncAnimation(fig, animate, frames=1250, repeat=False, interval=interval, blit=True, init_func=init)
-ani.save('bicopter.mp4', fps=60, extra_args=['-vcodec', 'libx264'])
+ani = animation.FuncAnimation(fig, animate, frames=1250, repeat=True, interval=interval, blit=True, init_func=init)
+plt.show()
 
-# plt.show()
+# ani = animation.FuncAnimation(fig, animate, frames=1250, repeat=False, interval=interval, blit=True, init_func=init)
+# ani.save('bicopter.mp4', fps=60, extra_args=['-vcodec', 'libx264'])
