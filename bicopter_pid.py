@@ -152,14 +152,14 @@ class RigidBicopter:
         self.Kpx         = 2
         self.Kdx         = 0.5
         self.Kix         = 0.05
-        self.Kpy         = 2
-        self.Kdy         = 0.5
-        self.Kiy         = 0.05
+        self.Kpy         = -2
+        self.Kdy         = -0.5
+        self.Kiy         = -0.05
         self.Kpx_        = 2
         self.Kdx_        = 0.5
-        self.Kpq         = 2
-        self.Kdq         = 0.5
-        self.Kiq         = 0.05
+        self.Kpq         = -2
+        self.Kdq         = -0.5
+        self.Kiq         = -0.05
         
         self.x_r = 0 # m
         self.y_r = 0 # m 
