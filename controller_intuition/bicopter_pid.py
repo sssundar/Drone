@@ -147,7 +147,7 @@ class RigidBicopter:
         self.max_q       = pi/12                                # sanity bound
         self.Kpy         = -5                                   # thrust controller
         self.Kdy         = -2
-        self.Kiy         = -1
+        self.Kiy         = -5
         self.Kpx_        = 2                                    # reference pitch controller 
         self.Kdx_        = 2
         self.Kpq         = -2                                   # torque controller
@@ -232,17 +232,23 @@ ax.grid()
 bicopter_body, = ax.plot([], [], 'o-', lw=2)
 time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
 target_text = ax.text(0.02, 0.90, '', transform=ax.transAxes)
+yi_text = ax.text(0.02, 0.85, '', transform=ax.transAxes)
+yd_text = ax.text(0.02, 0.80, '', transform=ax.transAxes)
+yp_text = ax.text(0.02, 0.75, '', transform=ax.transAxes)
 
 def init():
     bicopter_body.set_data([],[])
     time_text.set_text('')
     target_text.set_text('')
-    return bicopter_body, time_text, target_text
+    yi_text.set_text('')
+    yd_text.set_text('')
+    yp_text.set_text('')
+    return bicopter_body, time_text, target_text, yi_text, yd_text, yp_text
 
 def animate(i):
     global bicopter, dt, aim
 
-    if i % 250 == 0:
+    if i % 1250 == 0:
         # When the animation is due to 'repeat,' shift our reference
         if aim == [-2,-2]:
             aim = [2,2]
@@ -259,7 +265,12 @@ def animate(i):
     bicopter_body.set_data(*bicopter.draw())        
     time_text.set_text('time = %0.1f s' % bicopter.t_s)             # time in seconds
     target_text.set_text('(x, y) => (%d, %d) m' % (aim[0], aim[1]))  # reference (target position)
-    return bicopter_body, time_text, target_text
+    
+    (pq, q, ie_q, px, x, py, y, ie_y) = bicopter.k
+    yi_text.set_text('i => %0.3f N' % (bicopter.Kiy * ie_y))
+    yd_text.set_text('d => %0.3f N' % (bicopter.Kdy * py))
+    yp_text.set_text('p => %0.3f N' % (bicopter.Kpy * (y - bicopter.y_r)))
+    return bicopter_body, time_text, target_text, yi_text, yd_text, yp_text
 
 # This delays between frames so we hit our fps target
 t0 = time()
