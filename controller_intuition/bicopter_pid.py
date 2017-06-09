@@ -248,7 +248,7 @@ def init():
 def animate(i):
     global bicopter, dt, aim
 
-    if i % 1250 == 0:
+    if i % 480 == 0:
         # When the animation is due to 'repeat,' shift our reference
         if aim == [-2,-2]:
             aim = [2,2]
@@ -267,9 +267,9 @@ def animate(i):
     target_text.set_text('(x, y) => (%d, %d) m' % (aim[0], aim[1]))  # reference (target position)
     
     (pq, q, ie_q, px, x, py, y, ie_y) = bicopter.k
-    yi_text.set_text('i => %0.3f N' % (bicopter.Kiy * ie_y))
-    yd_text.set_text('d => %0.3f N' % (bicopter.Kdy * py))
-    yp_text.set_text('p => %0.3f N' % (bicopter.Kpy * (y - bicopter.y_r)))
+    yi_text.set_text('i => %0.6f N' % (bicopter.Kiy * ie_y))
+    yd_text.set_text('d => %0.6f N' % (bicopter.Kdy * py))
+    yp_text.set_text('p => %0.6f N' % (bicopter.Kpy * (y - bicopter.y_r)))
     return bicopter_body, time_text, target_text, yi_text, yd_text, yp_text
 
 # This delays between frames so we hit our fps target
