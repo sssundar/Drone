@@ -75,12 +75,9 @@ from time import time
 
 # Let's see how our simple PID controller holds up! 
 
-####################
-# Motor Simulation #
-####################
-
-# First, let's parameterize our motor.
-
+##########################
+# Motor Parametric Model #
+##########################
 
 class Motor:
 
@@ -161,6 +158,19 @@ def VisualizeMotor():
     plt.legend(["Ramp Up (w/w_max)", "Ramp up (f/f_max)", "Ramp Down (w/w_max)", "Ramp Down (f/f_max)"])
     plt.show()
 
+#############################
+# Updated Bicopter Dynamics #
+#############################
+
+# TODO 
+#  Copy the code from bicopter.py
+#  Extend the current PID controller to output F -> scaled to duty cycle for each motor (F_intended/mg)
+#  Include w for each motor in the system state.
+#  Compute the derivatives of motor angular velocities as above in Motor.dw using the input duty cycles.
+#  Use F_actual = km*w_motor^2 to generate the actual forces and torques integrated.
+#  Visualize the result. 
+
 if __name__ == "__main__":
+    # First, let's parameterize our motor.
     VisualizeMotor()
     sys.exit(0)
