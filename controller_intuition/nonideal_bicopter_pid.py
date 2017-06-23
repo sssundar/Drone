@@ -14,6 +14,7 @@
 ##############
 
 # 1. https://jakevdp.github.io/blog/2012/08/18/matplotlib-animation-tutorial/
+# 2. http://hades.mech.northwestern.edu/index.php/Brushed_DC_Motor_Theory
 
 ################
 # Dependencies #
@@ -128,8 +129,15 @@ class Motor:
         self.f = self.thrust(self.w)
         return (self.t_s, self.w, self.f)
 
+# As an example of motor inertia, consider Reference 2.
+# There, a motor inertia for a small brushed DC motor with a 6:1 planetary
+# gearbox is given as 23 gcm^2 which is 0.0000023 kg*m^2.
+# This two orders of magnitude smaller than that of our bicopter about it's COM.
+# This means even with a propellor, which is quite light in our case, we can reasonably
+# expect mechanical time constants in line with Reference 2 (31ms to 1-1/e or about 100ms to ~100%).
+# This is WELL within our bounds of stability & results in low overshoot.
 def SimulateMotor(ramp):
-    m = Motor(w_max=40*pi, f_max=0.06*9.8, ku=0.00004, ke=0.00010, J=0.00001)
+    m = Motor(w_max=40*pi, f_max=0.06*9.8, ku=0.00015, ke=0.00015, J=0.000005)
 
     if ramp == "up":
         m.set_dutycycle(1)            # fixed input duty cycle
@@ -222,10 +230,10 @@ class RigidBicopter:
         self.awy         = 1.2*self.kg["d"]*self.g_m_per_s2/abs(self.Kiy) if abs(self.Kiy) > 0 else 0
 
         # Left Motor 
-        self.left_motor = Motor(w_max=40*pi, f_max=self.max_thrust/2, ku=0.00004, ke=0.00010, J=0.00001)
+        self.left_motor = Motor(w_max=40*pi, f_max=self.max_thrust/2, ku=0.00015, ke=0.00015, J=0.000005)
 
         # Right Motor
-        self.right_motor = Motor(w_max=40*pi, f_max=self.max_thrust/2, ku=0.00004, ke=0.00010, J=0.00001)
+        self.right_motor = Motor(w_max=40*pi, f_max=self.max_thrust/2, ku=0.00015, ke=0.00015, J=0.000005)
 
         # Reference Input
         self.x_r = 0 # m
@@ -314,7 +322,7 @@ def init():
 def animate(i):
     global bicopter, dt, aim
 
-    if i % 480 == 0:
+    if i % 200 == 0:
         # When the animation is due to 'repeat,' shift our reference
         if aim == [-2,-2]:
             aim = [2,2]
