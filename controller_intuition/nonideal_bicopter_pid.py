@@ -129,7 +129,7 @@ class Motor:
         return (self.t_s, self.w, self.f)
 
 def SimulateMotor(ramp):
-    m = Motor(w_max=40*pi, f_max=0.06*9.8, ku=0.00001, ke=0.00003, J=0.00001)
+    m = Motor(w_max=40*pi, f_max=0.06*9.8, ku=0.00004, ke=0.00010, J=0.00001)
 
     if ramp == "up":
         m.set_dutycycle(1)            # fixed input duty cycle
@@ -139,7 +139,7 @@ def SimulateMotor(ramp):
         m.set_w(m.w_max)              # propellor rotational velocity        
 
     dt = 0.020  # seconds
-    t_max = 5.0 # seconds
+    t_max = 2.0 # seconds
 
     time_s = [0]
     omega = [m.w/m.w_max]
@@ -222,10 +222,10 @@ class RigidBicopter:
         self.awy         = 1.2*self.kg["d"]*self.g_m_per_s2/abs(self.Kiy) if abs(self.Kiy) > 0 else 0
 
         # Left Motor 
-        self.left_motor = Motor(w_max=40*pi, f_max=self.max_thrust/2, ku=0.00001, ke=0.00003, J=0.00001)
+        self.left_motor = Motor(w_max=40*pi, f_max=self.max_thrust/2, ku=0.00004, ke=0.00010, J=0.00001)
 
         # Right Motor
-        self.right_motor = Motor(w_max=40*pi, f_max=self.max_thrust/2, ku=0.00001, ke=0.00003, J=0.00001)
+        self.right_motor = Motor(w_max=40*pi, f_max=self.max_thrust/2, ku=0.00004, ke=0.00010, J=0.00001)
 
         # Reference Input
         self.x_r = 0 # m
