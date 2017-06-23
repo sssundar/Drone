@@ -136,8 +136,8 @@ class Motor:
 # This means even with a propellor, which is quite light in our case, we can reasonably
 # expect mechanical time constants in line with Reference 2 (31ms to 1-1/e or about 100ms to ~100%).
 # This is WELL within our bounds of stability & results in low overshoot.
-def SimulateMotor(ramp):
-    m = Motor(w_max=40*pi, f_max=0.06*9.8, ku=0.00015, ke=0.00015, J=0.000005)
+def SimulateMotor(ramp, t_max):
+    m = Motor(w_max=40*pi, f_max=0.06*9.8, ku=0.00007, ke=0.00015, J=0.000005)
 
     if ramp == "up":
         m.set_dutycycle(1)            # fixed input duty cycle
@@ -146,8 +146,7 @@ def SimulateMotor(ramp):
         m.set_dutycycle(0)            # fixed input duty cycle
         m.set_w(m.w_max)              # propellor rotational velocity        
 
-    dt = 0.020  # seconds
-    t_max = 2.0 # seconds
+    dt = 0.005  # seconds
 
     time_s = [0]
     omega = [m.w/m.w_max]
@@ -161,14 +160,15 @@ def SimulateMotor(ramp):
 
     return (time_s, omega, thrust)
 
-def VisualizeMotor():
-    (tu, wu, fu) = SimulateMotor("up")
-    (td, wd, fd) = SimulateMotor("down")
+def VisualizeMotor(t_max):
+    (tu, wu, fu) = SimulateMotor("up", t_max)
+    (td, wd, fd) = SimulateMotor("down", t_max)
     plt.plot(tu,wu,'r-')
     plt.plot(tu,fu,'r--')
     plt.plot(td,wd,'b-')
     plt.plot(td,fd,'b--')
     plt.xlabel("Seconds")
+    plt.xlim([0,t_max])
     plt.legend(["Ramp Up (w/w_max)", "Ramp up (f/f_max)", "Ramp Down (w/w_max)", "Ramp Down (f/f_max)"])
     plt.show()
 
@@ -230,10 +230,10 @@ class RigidBicopter:
         self.awy         = 1.2*self.kg["d"]*self.g_m_per_s2/abs(self.Kiy) if abs(self.Kiy) > 0 else 0
 
         # Left Motor 
-        self.left_motor = Motor(w_max=40*pi, f_max=self.max_thrust/2, ku=0.00015, ke=0.00015, J=0.000005)
+        self.left_motor = Motor(w_max=40*pi, f_max=self.max_thrust/2, ku=0.00007, ke=0.00015, J=0.000005)
 
         # Right Motor
-        self.right_motor = Motor(w_max=40*pi, f_max=self.max_thrust/2, ku=0.00015, ke=0.00015, J=0.000005)
+        self.right_motor = Motor(w_max=40*pi, f_max=self.max_thrust/2, ku=0.00007, ke=0.00015, J=0.000005)
 
         # Reference Input
         self.x_r = 0 # m
@@ -349,7 +349,7 @@ def animate(i):
 if __name__ == "__main__":
     if sys.argv[1] == "m":
         # First, let's parameterize our motor.
-        VisualizeMotor()
+        VisualizeMotor(0.3)
         sys.exit(0)
     elif sys.argv[1] == "a":
         # Now, let's animate the effect of the non-ideal motor dynamics on the bicopter PID controller
