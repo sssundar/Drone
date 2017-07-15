@@ -1,0 +1,26 @@
+We're going to model the motor as an RL in series with an EMF.
+We'll drive it with an NMOS half-bridge with Schottky flyback diodes.
+For now we'll focus on ideal voltage sources and ignore the need for reverse-current protection (across rails) & LPF (across motor terminals) caps.
+
+The mechanical motor will be represented by an R || C circuit driven by a current-controlled voltage source.
+
+The current will depend on the current through a motor EMF voltage source, and will represent torque.
+Capacitance will represent the mechanical moment of inertia. Resistance will represent drag.
+Voltage will represent rotor frequency.
+
+The motor EMF will be proportional to the voltage representing the rotor frequency.
+
+Using our parameters picked to give us reasonable ramp-up and ramp-down times in nonideal_bicopter_pid.py:
+
+Vcc = 7.4
+Rm = 0.1 
+Lm = 0.05
+w_max=40*pi, f_max=0.06*9.8, ku=0.00007, km'=0.00015, J=0.000005
+
+C = J = 0.000005 -> Vw is voltage across this
+R = 1/ku = 14286 -> this is drag
+
+T = (ku+km')*w_max = (0.00007 + 0.00015)*40*pi = 0.0276 -> what we chose in the python script
+ke = T * (R/Vcc) = T * (0.1/7.4) = 0.0276 * 0.1 / 7.4 = 0.0003743 -> ke * Iintomotor = Itorque
+km = Vcc km' / T = 7.4 * 0.00015 / 0.0276 = 0.0402 -> km * Vw = motor EMF
+
