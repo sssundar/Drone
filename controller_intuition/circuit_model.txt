@@ -13,14 +13,42 @@ The motor EMF will be proportional to the voltage representing the rotor frequen
 Using our parameters picked to give us reasonable ramp-up and ramp-down times in nonideal_bicopter_pid.py:
 
 Vcc = 7.4
-Rm = 0.1 
-Lm = 0.05
+Rm = 2
+Lm = 0.005 (for a 2.5 ms electrical time constant)
 w_max=40*pi, f_max=0.06*9.8, ku=0.00007, km'=0.00015, J=0.000005
 
 C = J = 0.000005 -> Vw is voltage across this
 R = 1/ku = 14286 -> this is drag
 
 T = (ku+km')*w_max = (0.00007 + 0.00015)*40*pi = 0.0276 -> what we chose in the python script
-ke = T * (R/Vcc) = T * (0.1/7.4) = 0.0276 * 0.1 / 7.4 = 0.0003743 -> ke * Iintomotor = Itorque
+ke = T * (Rm/Vcc) = T * (2/7.4) = 0.0276 * 2 / 7.4 = 0.00748 -> ke * Iintomotor = Itorque
 km = Vcc km' / T = 7.4 * 0.00015 / 0.0276 = 0.0402 -> km * Vw = motor EMF
 
+Drone: 
+  I don't really know what I'm doing. All I remember from school is you should have a sense for what your circuit should do before you build it, so you know what to measure to see if you built it wrong (or learn something new...). 
+
+  So what am I trying to accomplish? I want to find a motor drive circuit and have some sense of what currents, voltages I expect in the system so I can pick parts which will hold up. I want to have a measurement plan before I build my circuit.
+
+1. Simulate motor drive in LTSpice. Currently, testing subcircuits. E.g. RL timescale.. should be fast. Why are currents getting to 20A? This means our motor coefficients are wrong, they aren't rising high enough? Why does current stay in the drive direction for so long? Is L too high? L/R here is 0.05/0.1 = 0.5 seconds... about what we see. Something about this circuit is just... weird. I need to look up real motor parameters to understand whether my electrical numbers are off. My measurements with a single transistor (no current path, just shottky) for my hobby motors showed microsecond L/R constants... and mH inductors are large, no? Very tightly wound?
+
+Ha! I forgot ke in my model depends on the R of the motor winding. All is well now. Looks like I've been simulating a 100ms mechanical time constant system. I should go check my python scripts to be sure, and see what asymmetry there was in those constants. The half-bridge in drive/brake works as expected, though. Within 300ms it's drive/braked. Good enough for straightforward control.
+
+Sreejith pointed me to: https://store.arduino.cc/usa/arduino-motor-shield-rev3 ... which is ... all of this and more.
+
+PMOS is a bad idea unless you want to drive with a second set of transistors to reach the rails. Remember when 'off' PMOS needs to have a gate voltage of Vcc. The question is how to match the transistors. In the current SPICE model, you're using real transistors but an ideal drive without appreciable delay between NMOS/PMOS. 
+
+If you delay too much, you'll freewheel and your flyback diodes will see a lot of current. If you ever have NMOS and PMOS on together, you'll short your power supply through about 50mOhm and see ~140A blow for, say, what you HOPE is a few microseconds. 
+
+I think it's better to burn out flyback diodes, don't you? I mean.. that's not ideal either but at least they're built for it, on small timescales. 
+
+So the next things to check are:
+1. Make sure you're testing some asymmetry between drive/brake
+2. Make sure braking actually... does something, to be worth the complexity. Though I suppose the 'benefit' is you don't fry your electronics or add a ton of noise or ground bounce to your lines. So... remove the brake portion - Disconnect that transistor. What happens?
+3. Add a realistic circuit to ... make sure NMOS and PMOS don't turn on at the same time. What does that do to flyback current? Best bet is probably a half-bridge driver. Find an LT one that handles PMOS? Or try NMOS-NMOS and see what... happens to circuit?
+4. Write down what you need to measure.
+5. Pick components, hand-calculate what you expect to measure, or do it in spice if you can.
+6. Figure out how to measure whatever you need to measure... 
+7. Order everything! 
+
+
+  
