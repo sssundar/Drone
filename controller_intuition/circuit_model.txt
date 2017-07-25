@@ -51,4 +51,28 @@ So the next things to check are:
 7. Order everything! 
 
 
-  
+Appa Ideas:
+Measure on-resistance of L298, try cap + that R and see how long can sustain. 
+If that is fine, then ok, use it, otherwise try counter (for PWM) plus external circuit with
+2-pole switches to decide which transistor to turn off first.
+
+
+Next Steps:
+
+drone - motor circuit. part ids. timing #s. requirements for pwm + buffer timing. parts. full circuit with parts & timing & power specifications without any measurement. then, add measurement. timing #s. and so on. once pure motor circuit is ready, order it & all needed parts (uc, power supply, measurement tools, ... and have a list of what you're going to measure).
+
+Stm32f4 has many timers with dead time into pwm. No shoot through.
+
+For opto need 25ma each.. probably want buffers.
+
+Maybe have two batteries? Small for mcu? Totally isolated supplies?
+
+Need discovery board for testing motor driver circuit... Can also use for studying fwup WiFi and dma, .. with sensor. Only really need imu to start. 
+
+Probably worth making pcb only after basics worked out.
+
+Adafruit chare drive circuit for lipo. Bat had protection built in. Check ratings. Charge on device. Simpler. Low weight anyways.
+
+Blu control app on phone gyro on phone and scroller. First pass just angle control. 
+
+Need voltage readout. Zener and opto to get high side switch. Low side just adc. 
