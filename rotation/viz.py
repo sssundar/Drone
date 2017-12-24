@@ -37,7 +37,7 @@ def R(phi, theta, psi):
   R[2,0] = -s(theta)
 
   R[0,1] = -s(phi)*c(psi) + c(phi)*s(theta)*s(psi)
-  R[1,1] = -c(phi)*c(psi) + s(phi)*s(theta)*s(psi)
+  R[1,1] = c(phi)*c(psi) + s(phi)*s(theta)*s(psi)
   R[2,1] = c(theta)*s(psi)
 
   R[0,2] = s(phi)*s(psi) + c(phi)*s(theta)*c(psi)
@@ -93,8 +93,8 @@ def W(phi, theta, psi, dphi, dtheta, dpsi):
   Rp[0,1] += c(phi)*(c(theta)*dtheta)*s(psi)
   Rp[0,1] += c(phi)*s(theta)*(c(psi)*dpsi)
 
-  Rp[1,1] = (s(phi)*dphi)*c(psi)
-  Rp[1,1] += -c(phi)*(-s(psi)*dpsi)
+  Rp[1,1] = (-s(phi)*dphi)*c(psi)
+  Rp[1,1] += c(phi)*(-s(psi)*dpsi)
   Rp[1,1] += (c(phi)*dphi)*s(theta)*s(psi)
   Rp[1,1] += s(phi)*(c(theta)*dtheta)*s(psi)
   Rp[1,1] += s(phi)*s(theta)*(c(psi)*dpsi)
@@ -121,13 +121,16 @@ def W(phi, theta, psi, dphi, dtheta, dpsi):
 
 # Is the effective w for a rotation of 2pi rad/s about ek just.. ek*2pi, regardless of the angle about axis ek?
 # We expect W = -W^T as well.
-# You definitely have a bug in your code. Trace it through...
 def test_W():
   print W(3*pi/12,0,0,2*pi,0,0)
   print "\n"
   print W(0,3*pi/12,0,0,2*pi,0)
   print "\n"
   print W(0,0,3*pi/12,0,0,2*pi)
+  print "\n"
+
+  w = W(0,0,0,pi,2*pi,4*pi)
+  w = (w[1,0], w[0,2], w[2,1])
 
 def Main():
   test_W()
