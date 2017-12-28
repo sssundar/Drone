@@ -74,8 +74,7 @@ def test_R():
   plt.show()
 
 # This is the (w x) operator, W, with respect to changing body yaw, pitch, and roll.
-# It is dR/dt R^T. Note that these are the angles we're likely to measure with a gyrometer.
-# The arguments are the current Euler angles and their measured time derivatives.
+# It is dR/dt R^T. The arguments are the current Euler angles and their time derivatives.
 def W(phi, theta, psi, dphi, dtheta, dpsi):
   Rp = np.zeros((3,3))
 
@@ -119,18 +118,34 @@ def W(phi, theta, psi, dphi, dtheta, dpsi):
 
   return dot(Rp, transpose(R(phi,theta,psi)))
 
-# Is the effective w for a rotation of 2pi rad/s about ek just.. ek*2pi, regardless of the angle about axis ek?
-# We expect W = -W^T as well.
-def test_W():
-  print W(3*pi/12,0,0,2*pi,0,0)
-  print "\n"
-  print W(0,3*pi/12,0,0,2*pi,0)
-  print "\n"
-  print W(0,0,3*pi/12,0,0,2*pi)
-  print "\n"
+# Sets values lower than epsilon to zero.
+# Prints the result with precision 0.3f.
+def sanitize(A):
+  print ""
+  epsilon = 0.001
+  for r in xrange(3):
+    text = ""
+    for c in xrange(3):
+      if abs(A[r, c]) < epsilon:
+        A[r,c] = 0
+      text += "%6.2f,\t" % A[r,c]
+    print text[:-2]
+  print ""
 
-  w = W(0,0,0,pi,2*pi,4*pi)
-  w = (w[1,0], w[0,2], w[2,1])
+def test_W():
+  # Is the effective w for a rotation of x rad/s about ek just.. ek*x,
+  # regardless of the angle about axis ek? We expect W = -W^T as well.
+  sanitize(W(3*pi/12,0,0,2*pi,0,0))
+  sanitize(W(0,3*pi/12,0,0,2*pi,0))
+  sanitize(W(0,0,3*pi/12,0,0,2*pi))
+
+  # Let's see what it looks like once we've rotated a bit.
+  # It's still skew antisymmetric with zero trace! This looks like the operation (w x)!!!!
+  sanitize(W(pi/4, -pi/12, -3*pi, pi, 2*pi, 3*pi))
+
+  # w = W(0,0,0,pi,2*pi,4*pi)
+  # w = (w[1,0], w[0,2], w[2,1])
+  # print w
 
 def Main():
   test_W()
