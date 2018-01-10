@@ -13,11 +13,12 @@
 # Let R be the rotation matrix mapping a vector in S'' to S', with inverse R^T
 # We know r_s' = R r_s''
 # We know d/dt r_s' = (dR/dt R^T) * (R r_s'') = (dR/dt R^T) r_s'
-# Therefore we expect (dR/dt R^T) to be the operator (w x),
+# Therefore we expect (dR/dt R^T) to be the operator (w x) in the S' frame.
 # The goal of this script is to visualize this.
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import sys
 
 import numpy as np
 from numpy import pi as pi
@@ -73,6 +74,38 @@ def test_R():
   ax.set_zlabel("z")
   plt.show()
 
+# Sets values lower than epsilon to zero.
+# Prints the result with precision 0.3f.
+def sanitize_matrix(A):
+  print ""
+  epsilon = 0.001
+  for r in xrange(3):
+    text = ""
+    for c in xrange(3):
+      if abs(A[r, c]) < epsilon:
+        A[r,c] = 0
+      text += "%6.2f,\t" % A[r,c]
+    print text[:-2]
+  print ""
+
+def sanitize_vector(a):
+  print ""
+  epsilon = 0.001
+  text = ""
+  for r in xrange(3):
+    if abs(a[r]) < epsilon:
+      a[r] = 0
+    text += "%6.2f,\t" % a[r]
+  print text[:-2]
+  print ""
+
+def vectorize(W):
+  v = np.zeros(3)
+  v[0] = W[1,0]
+  v[1] = W[0,2]
+  v[2] = W[2,1]
+  return v
+
 # This is the (w x) operator, W, with respect to changing body yaw, pitch, and roll.
 # It is dR/dt R^T. The arguments are the current Euler angles and their time derivatives.
 def W(phi, theta, psi, dphi, dtheta, dpsi):
@@ -116,36 +149,24 @@ def W(phi, theta, psi, dphi, dtheta, dpsi):
   Rp[2,2] = (-s(theta)*dtheta)*c(psi)
   Rp[2,2] += c(theta)*(-s(psi)*dpsi)
 
-  return dot(Rp, transpose(R(phi,theta,psi)))
+  w_i = vectorize(dot(Rp, transpose(R(phi,theta,psi))))
+  w_b = dot(transpose(R(phi,theta,psi)), w_i)
 
-# Sets values lower than epsilon to zero.
-# Prints the result with precision 0.3f.
-def sanitize(A):
-  print ""
-  epsilon = 0.001
-  for r in xrange(3):
-    text = ""
-    for c in xrange(3):
-      if abs(A[r, c]) < epsilon:
-        A[r,c] = 0
-      text += "%6.2f,\t" % A[r,c]
-    print text[:-2]
-  print ""
+  return (w_i, w_b)
+
 
 def test_W():
   # Is the effective w for a rotation of x rad/s about ek just.. ek*x,
   # regardless of the angle about axis ek? We expect W = -W^T as well.
-  sanitize(W(3*pi/12,0,0,2*pi,0,0))
-  sanitize(W(0,3*pi/12,0,0,2*pi,0))
-  sanitize(W(0,0,3*pi/12,0,0,2*pi))
+  # sanitize_matrix(W(3*pi/12,0,0,2*pi,0,0)[0])
+  # sanitize_matrix(W(0,3*pi/12,0,0,2*pi,0)[0])
+  # sanitize_matrix(W(0,0,3*pi/12,0,0,2*pi)[0])
 
   # Let's see what it looks like once we've rotated a bit.
   # It's still skew antisymmetric with zero trace! This looks like the operation (w x)!!!!
-  sanitize(W(pi/4, -pi/12, -3*pi, pi, 2*pi, 3*pi))
+  phi, theta, psi = (pi/4, 3*pi/12, -pi)
+  w_i, w_b = W(phi, theta, psi, pi, 2*pi, 3*pi)
 
-  # w = W(0,0,0,pi,2*pi,4*pi)
-  # w = (w[1,0], w[0,2], w[2,1])
-  # print w
 
 def Main():
   test_W()
