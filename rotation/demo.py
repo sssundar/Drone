@@ -57,7 +57,8 @@ def ddt_wb(wb, t):
   global Jb, Jb_inv
   return dot(Jb_inv, cross(dot(Jb, wb), wb))
 
-def HIB(roll, pitch, yaw):
+def HIB(O):
+  roll, pitch, yaw = O
   HI1 = np.zeros((3,3))
   HI1[0,0] = c(yaw)
   HI1[0,1] = s(yaw)
@@ -99,16 +100,34 @@ def HIB(roll, pitch, yaw):
 
   return dot(H2B, dot(H12, HI1))
 
-def HBI(roll, pitch, yaw):
+def HBI(O):
+  roll, pitch, yaw = O
   return transpose(HIB(roll,pitch,yaw))
 
-def Lbi(roll, pitch, yaw):
+# This was derived with the constraint that pitch = 0, all time.
+# That turned out not to hold true when simulating.
+# def Lbi(O):
+#   roll, pitch, yaw = O
+#   L = np.zeros((3,3))
+#   L[0,0] = 1
+#   L[1,1] = c(roll)
+#   L[1,2] = -s(roll)
+#   L[2,1] = s(roll)
+#   L[2,2] = c(roll)
+#   return L
+
+def Lbi(O):
+  roll, pitch, yaw = O
   L = np.zeros((3,3))
   L[0,0] = 1
+  L[0,1] = s(roll) * s(pitch) / c(pitch)
+  L[0,2] = c(roll) * s(pitch) / c(pitch)
+  L[1,0] = 0
   L[1,1] = c(roll)
   L[1,2] = -s(roll)
-  L[2,1] = s(roll)
-  L[2,2] = c(roll)
+  L[2,0] = 0
+  L[2,1] = s(roll) / c(pitch)
+  L[2,2] = c(roll) / c(pitch)
   return L
 
 def Main():
@@ -132,28 +151,61 @@ def Main():
   # plt.plot(time_s, wb_mag)
   # plt.show()
 
-  # Can you just plot wb over time in 3d space?
-  N_decimation = 20
-  X = [0 for k in wb[::N_decimation]]
-  Y = [0 for k in wb[::N_decimation]]
-  Z = [0 for k in wb[::N_decimation]]
-  U = [k[0] for k in wb[::N_decimation]]
-  V = [k[1] for k in wb[::N_decimation]]
-  W = [k[2] for k in wb[::N_decimation]]
+  # Can you just plot wb over time in 3d space in aircraft orientation?
+  # N_decimation = 80
+  # X = [0 for k in wb[::N_decimation]]
+  # Y = [0 for k in wb[::N_decimation]]
+  # Z = [0 for k in wb[::N_decimation]]
+  # U = [k[0] for k in wb[::N_decimation]]
+  # V = [k[1] for k in wb[::N_decimation]]
+  # W = [k[2] for k in wb[::N_decimation]]
 
-  fig = plt.figure()
-  ax = fig.add_subplot(111, projection='3d')
-  ax.quiver(X,Y,Z,U,V,W, length=0.1, arrow_length_ratio=0.05, pivot='tail')
-  ax.set_xlabel("x")
-  ax.set_ylabel("y")
-  ax.set_zlabel("z")
-  plt.show()
+  # fig = plt.figure()
+  # ax = fig.add_subplot(111, projection='3d')
+  # ax.quiver(Y,X,Z,V,U,W, length=0.1, arrow_length_ratio=0.05, pivot='tail')
+  # ax.set_xlabel("y")
+  # ax.set_ylabel("x")
+  # ax.set_zlabel("z")
+  # ax.invert_zaxis()
+  # plt.show()
 
-  # For each w_b(t), compute dO/dt and integrate it over time-steps of T_o << T_wb. Assume wb is constant over the T_wb window.
+  # For each w_b(t), compute dO/dt and integrate it over time-steps of T_o <<
+  # T_wb and To = T_wb (discrete step). Assume wb is constant over the T_wb
+  # window. How do things change between the two?
+  dT_discrete = T_wb_s
+  O_discrete = [O_0]
+  for k in xrange(len(wb[:-1])):
+    dO_discrete = dot(Lbi(O_discrete[k]), wb[k])
+    O_discrete.append(O_discrete[k] + (dO_discrete * dT_discrete))
+    #O_discrete[k+1] = O_discrete[k+1] % (2*pi)
 
-  # At the start of each T_wb, save the rotation matrix HBI.
+  N_infinitesimal = 10
+  dT_infinitesimal = T_wb_s / N_infinitesimal
+  O_infinitesimal = [O_0]
+  for k in xrange(len(wb[:-1])):
+    O_temp = O_infinitesimal[k]
+    for j in xrange(N_infinitesimal):
+      dO_temp = dot(Lbi(O_temp), wb[k])
+      O_temp += dO_temp * dT_infinitesimal
+    O_infinitesimal.append(O_temp)
 
-  # Knowing that you started with O_0, plot the body axes over the time of this simulation with aircraft convention (z-down).
+    # It is super weird that adding this line makes us go from constant => periodic
+    # O_infinitesimal[k+1] = O_infinitesimal[k+1] % (2*pi)
+
+  print O_infinitesimal
+
+  # plt.plot(time_s, [O_infinitesimal[k] - O_discrete[k] for x in xrange(len(O_infinitesimal))])
+  # plt.plot(time_s, O_infinitesimal)
+  # plt.legend(["AX_ROLL", "AX_PITCH", "AX_YAW"])
+  # plt.show()
+
+  # Well, I don't see a huge difference between the two. It's particularly
+  # strange that a construction that ought to have kept pitch = 0 for all
+  # time... is not doing so. It's also weird that pitch is slooooowly
+  # increasing in magnitude. I think I have a bug here.
+
+
+  # Knowing that you started with O_0, plot the body axes over the time of this simulation.
 
 if __name__ == "__main__":
   Main()
