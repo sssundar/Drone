@@ -152,14 +152,11 @@ def aircraft_axes(vectors, decimator):
   ax.invert_zaxis()
   plt.show()
 
-def draw_body(axes, x, y, z):
-  colors = ["r", "b", "k"]
-  frame = [x, y, z]
-
+def draw_body(axes, vectors, colors):
   line_collections = []
 
-  for m in xrange(3):
-    vector = frame[m]
+  for m in xrange(len(vectors)):
+    vector = vectors[m]
 
     X = Y = Z = 0
     U = vector[0]
@@ -170,7 +167,7 @@ def draw_body(axes, x, y, z):
 
   return line_collections
 
-def animate(bx, by, bz, decimator):
+def animate(time_series, colors, decimator):
   fig = plt.figure()
   ax = fig.add_subplot(111, projection='3d')
   ax.set_xlabel("y")
@@ -179,19 +176,24 @@ def animate(bx, by, bz, decimator):
   ax.invert_zaxis()
 
   line_collections = None
+  count = 0
 
-  for n in xrange(10): # len(bx)):
+  for n in xrange(len(time_series[0])):
     if (n % decimator) != 0:
       continue
 
-    if line_collections is not None:
+    if (line_collections is not None) and (count > 1):
+      # The first set of axes drawn stays as a reference in all images.
+      # The rest are wiped right after they are drawn/saved to give the illusion of motion.
       for col in line_collections:
         ax.collections.remove(col)
 
-    line_collections = draw_body(ax, bx[n], by[n], bz[n])
+    line_collections = draw_body(ax, [vectors[n] for vectors in time_series], colors)
 
     plt.savefig('images/Frame%08i.png' % n)
     plt.draw()
+
+    count += 1
 
 def Main():
   global wb_0, O_0
@@ -233,36 +235,45 @@ def Main():
     O_discrete.append(O_discrete[k] + (dO_discrete * dT_discrete))
     O_discrete[k+1] = O_discrete[k+1] % (2*pi)
 
-  N_infinitesimal = 10
-  dT_infinitesimal = T_wb_s / N_infinitesimal
-  O_infinitesimal = [O_0]
-  for k in xrange(len(wb[:-1])):
-    O_temp = O_infinitesimal[k]
-    wi = dot(HBI(O_temp), wb[k])
-    for j in xrange(N_infinitesimal):
-      dO_temp = dot(Lbi(O_temp), dot(HIB(O_temp), wi))
-      O_temp += dO_temp * dT_infinitesimal
-    O_infinitesimal.append(O_temp)
-
-  # Error #1: O_infinitesimal is constant. That's just wrong. PDB is your friend.
-  # plt.plot(time_s, prettify(O_infinitesimal))
+  # plt.plot(time_s, prettify(O_discrete))
   # plt.legend(["AX_ROLL", "AX_PITCH", "AX_YAW"])
   # plt.show()
 
-  # Knowing that you started with O_0, plot the body axes over the time of this simulation.
-  body_z0 = np.zeros(3)
-  body_y0 = np.zeros(3)
+  # Knowing that you started with O_0 s.t. body = inertial frame, plot the body axes over the time of this simulation.
   body_x0 = np.zeros(3)
+  body_y0 = np.zeros(3)
+  body_z0 = np.zeros(3)
 
-  body_z0[AX_YAW] = 1.0
-  body_y0[AX_PITCH] = 1.0
   body_x0[AX_ROLL] = 1.0
+  body_y0[AX_PITCH] = 1.0
+  body_z0[AX_YAW] = 1.0
 
-  inertial_body_z = [dot(HBI(o), body_z0) for o in O_discrete]
-  inertial_body_y = [dot(HBI(o), body_y0) for o in O_discrete]
   inertial_body_x = [dot(HBI(o), body_x0) for o in O_discrete]
+  inertial_body_y = [dot(HBI(o), body_y0) for o in O_discrete]
+  inertial_body_z = [dot(HBI(o), body_z0) for o in O_discrete]
+  time_series = [inertial_body_x, inertial_body_y, inertial_body_z]
+  colors = ["r", "b", "k"]
 
-  animate(inertial_body_x, inertial_body_y, inertial_body_z, 1) #F_wb_hz)
+  animate(time_series, colors, F_wb_hz/2)
+
+  ###############################################################################
+  # Error #1: O_infinitesimal is constant. That's just wrong. PDB is your friend.
+  ###############################################################################
+
+  # N_infinitesimal = 10
+  # dT_infinitesimal = T_wb_s / N_infinitesimal
+  # O_infinitesimal = [O_0]
+  # for k in xrange(len(wb[:-1])):
+  #   O_temp = O_infinitesimal[k]
+  #   wi = dot(HBI(O_temp), wb[k])
+  #   for j in xrange(N_infinitesimal):
+  #     dO_temp = dot(Lbi(O_temp), dot(HIB(O_temp), wi))
+  #     O_temp += dO_temp * dT_infinitesimal
+  #   O_infinitesimal.append(O_temp)
+
+  # plt.plot(time_s, prettify(O_infinitesimal))
+  # plt.legend(["AX_ROLL", "AX_PITCH", "AX_YAW"])
+  # plt.show()
 
 if __name__ == "__main__":
   Main()
