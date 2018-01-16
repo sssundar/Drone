@@ -18,6 +18,7 @@ import numpy as np
 from numpy import pi as pi
 from numpy import cos as c
 from numpy import sin as s
+from numpy import tan as tan
 from numpy import cross as cross
 from numpy import dot as dot
 from numpy import transpose as transpose
@@ -36,6 +37,8 @@ wb_0 = None
 O_0 = None
 AX_ROLL, AX_PITCH, AX_YAW = (0, 1, 2)
 
+radians_to_degrees = lambda (rad): 180*rad/pi
+
 def setup():
   global Jb, Jb_inv, wb_0, O_0
 
@@ -49,9 +52,9 @@ def setup():
   O_0 = np.zeros(3)
 
   wb_0 = np.zeros(3)
-  wb_0[AX_ROLL] = pi/4
+  wb_0[AX_ROLL] = pi/15
   wb_0[AX_PITCH] = 0
-  wb_0[AX_YAW] = pi/4
+  wb_0[AX_YAW] = pi/15
 
 def ddt_wb(wb, t):
   global Jb, Jb_inv
@@ -101,27 +104,20 @@ def HIB(O):
   return dot(H2B, dot(H12, HI1))
 
 def HBI(O):
-  roll, pitch, yaw = O
-  return transpose(HIB(roll,pitch,yaw))
+  return transpose(HIB(O))
 
-# This was derived with the constraint that pitch = 0, all time.
-# That turned out not to hold true when simulating.
-# def Lbi(O):
-#   roll, pitch, yaw = O
-#   L = np.zeros((3,3))
-#   L[0,0] = 1
-#   L[1,1] = c(roll)
-#   L[1,2] = -s(roll)
-#   L[2,1] = s(roll)
-#   L[2,2] = c(roll)
-#   return L
-
+# O % (2*pi) required
 def Lbi(O):
   roll, pitch, yaw = O
+
+  if (radians_to_degrees(abs(pitch - 0.5*pi)) < 10) or (radians_to_degrees(abs(pitch - 1.5*pi)) < 10):
+    print "Error, too close to pitch singularity."
+    sys.exit(1)
+
   L = np.zeros((3,3))
   L[0,0] = 1
-  L[0,1] = s(roll) * s(pitch) / c(pitch)
-  L[0,2] = c(roll) * s(pitch) / c(pitch)
+  L[0,1] = s(roll) * tan(pitch)
+  L[0,2] = c(roll) * tan(pitch)
   L[1,0] = 0
   L[1,1] = c(roll)
   L[1,2] = -s(roll)
@@ -130,6 +126,73 @@ def Lbi(O):
   L[2,2] = c(roll) / c(pitch)
   return L
 
+def prettify(euler_angles):
+  result = [v / pi for v in euler_angles]
+  for k in xrange(len(result)):
+    for j in xrange(3):
+      if result[k][j] > 1:
+        result[k][j] -= 2
+  return result
+
+def aircraft_axes(vectors, decimator):
+  N_decimation = decimator
+  X = [0 for k in vectors[::N_decimation]]
+  Y = [0 for k in vectors[::N_decimation]]
+  Z = [0 for k in vectors[::N_decimation]]
+  U = [k[0] for k in vectors[::N_decimation]]
+  V = [k[1] for k in vectors[::N_decimation]]
+  W = [k[2] for k in vectors[::N_decimation]]
+
+  fig = plt.figure()
+  ax = fig.add_subplot(111, projection='3d')
+  ax.quiver(Y,X,Z,V,U,W, length=0.1, arrow_length_ratio=0.05, pivot='tail')
+  ax.set_xlabel("y")
+  ax.set_ylabel("x")
+  ax.set_zlabel("z")
+  ax.invert_zaxis()
+  plt.show()
+
+def draw_body(axes, x, y, z):
+  colors = ["r", "b", "k"]
+  frame = [x, y, z]
+
+  line_collections = []
+
+  for m in xrange(3):
+    vector = frame[m]
+
+    X = Y = Z = 0
+    U = vector[0]
+    V = vector[1]
+    W = vector[2]
+
+    line_collections.append(axes.quiver(Y,X,Z,V,U,W, length=0.05, arrow_length_ratio=0.05, pivot='tail', color=colors[m]))
+
+  return line_collections
+
+def animate(bx, by, bz, decimator):
+  fig = plt.figure()
+  ax = fig.add_subplot(111, projection='3d')
+  ax.set_xlabel("y")
+  ax.set_ylabel("x")
+  ax.set_zlabel("z")
+  ax.invert_zaxis()
+
+  line_collections = None
+
+  for n in xrange(10): # len(bx)):
+    if (n % decimator) != 0:
+      continue
+
+    if line_collections is not None:
+      for col in line_collections:
+        ax.collections.remove(col)
+
+    line_collections = draw_body(ax, bx[n], by[n], bz[n])
+
+    plt.savefig('images/Frame%08i.png' % n)
+    plt.draw()
+
 def Main():
   global wb_0, O_0
 
@@ -137,9 +200,10 @@ def Main():
 
   # Sampling period of body angular velocity
   T_wb_s = 0.02
+  F_wb_hz = 50
+  T_final_s = 100.0
 
   # Integrate d/dt wb = ddt_wb(wb, t). Sample it at T_wb.
-  T_final_s = 100.0
   N_points = int(T_final_s / T_wb_s)
   time_s = linspace(0, T_final_s, N_points)
   wb = odeint(ddt_wb, wb_0, t = time_s)
@@ -152,60 +216,53 @@ def Main():
   # plt.show()
 
   # Can you just plot wb over time in 3d space in aircraft orientation?
-  # N_decimation = 80
-  # X = [0 for k in wb[::N_decimation]]
-  # Y = [0 for k in wb[::N_decimation]]
-  # Z = [0 for k in wb[::N_decimation]]
-  # U = [k[0] for k in wb[::N_decimation]]
-  # V = [k[1] for k in wb[::N_decimation]]
-  # W = [k[2] for k in wb[::N_decimation]]
+  # aircraft_axes(wb, F_wb_hz)
 
-  # fig = plt.figure()
-  # ax = fig.add_subplot(111, projection='3d')
-  # ax.quiver(Y,X,Z,V,U,W, length=0.1, arrow_length_ratio=0.05, pivot='tail')
-  # ax.set_xlabel("y")
-  # ax.set_ylabel("x")
-  # ax.set_zlabel("z")
-  # ax.invert_zaxis()
-  # plt.show()
+  # For each w_b(t), compute dO/dt and integrate it over time-steps of:
+  # T_o << T_wb (infinitesimal case)
+  # To = T_wb (discrete case)
 
-  # For each w_b(t), compute dO/dt and integrate it over time-steps of T_o <<
-  # T_wb and To = T_wb (discrete step). Assume wb is constant over the T_wb
-  # window. How do things change between the two?
+  # Falsely assume wb is constant as in practice, it's the only sample we'd get. In discrete case, just step forward.
+  # In infinitesimal case, rotate wb to wi, then step forward and rotate into wb as body frame changes.
+  # You know it's wrong, but you want to find out how wrong.
+
   dT_discrete = T_wb_s
   O_discrete = [O_0]
   for k in xrange(len(wb[:-1])):
     dO_discrete = dot(Lbi(O_discrete[k]), wb[k])
     O_discrete.append(O_discrete[k] + (dO_discrete * dT_discrete))
-    #O_discrete[k+1] = O_discrete[k+1] % (2*pi)
+    O_discrete[k+1] = O_discrete[k+1] % (2*pi)
 
   N_infinitesimal = 10
   dT_infinitesimal = T_wb_s / N_infinitesimal
   O_infinitesimal = [O_0]
   for k in xrange(len(wb[:-1])):
     O_temp = O_infinitesimal[k]
+    wi = dot(HBI(O_temp), wb[k])
     for j in xrange(N_infinitesimal):
-      dO_temp = dot(Lbi(O_temp), wb[k])
+      dO_temp = dot(Lbi(O_temp), dot(HIB(O_temp), wi))
       O_temp += dO_temp * dT_infinitesimal
     O_infinitesimal.append(O_temp)
 
-    # It is super weird that adding this line makes us go from constant => periodic
-    # O_infinitesimal[k+1] = O_infinitesimal[k+1] % (2*pi)
-
-  print O_infinitesimal
-
-  # plt.plot(time_s, [O_infinitesimal[k] - O_discrete[k] for x in xrange(len(O_infinitesimal))])
-  # plt.plot(time_s, O_infinitesimal)
+  # Error #1: O_infinitesimal is constant. That's just wrong. PDB is your friend.
+  # plt.plot(time_s, prettify(O_infinitesimal))
   # plt.legend(["AX_ROLL", "AX_PITCH", "AX_YAW"])
   # plt.show()
 
-  # Well, I don't see a huge difference between the two. It's particularly
-  # strange that a construction that ought to have kept pitch = 0 for all
-  # time... is not doing so. It's also weird that pitch is slooooowly
-  # increasing in magnitude. I think I have a bug here.
-
-
   # Knowing that you started with O_0, plot the body axes over the time of this simulation.
+  body_z0 = np.zeros(3)
+  body_y0 = np.zeros(3)
+  body_x0 = np.zeros(3)
+
+  body_z0[AX_YAW] = 1.0
+  body_y0[AX_PITCH] = 1.0
+  body_x0[AX_ROLL] = 1.0
+
+  inertial_body_z = [dot(HBI(o), body_z0) for o in O_discrete]
+  inertial_body_y = [dot(HBI(o), body_y0) for o in O_discrete]
+  inertial_body_x = [dot(HBI(o), body_x0) for o in O_discrete]
+
+  animate(inertial_body_x, inertial_body_y, inertial_body_z, 1) #F_wb_hz)
 
 if __name__ == "__main__":
   Main()
