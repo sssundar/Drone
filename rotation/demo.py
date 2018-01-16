@@ -106,8 +106,19 @@ def HIB(O):
 def HBI(O):
   return transpose(HIB(O))
 
+# wi (angular velocity in inertial frame) can be calculated as:
+# wi = dHBI/dt (O, dO/dt) * HIB(O)     (1)
+# wi = HBI(O) wb                       (2)
+# This gives us a nice way of checking for numerical consistency in the LBI transformation, and
+# without a known solution for wi, it's the best correctness check we have.
+def wi_1(O, dO):
+  return 0
+
+def wi_2(wb, O):
+  return 0
+
 # O % (2*pi) required
-def Lbi(O):
+def LBI(O):
   roll, pitch, yaw = O
 
   if (radians_to_degrees(abs(pitch - 0.5*pi)) < 10) or (radians_to_degrees(abs(pitch - 1.5*pi)) < 10):
@@ -231,7 +242,7 @@ def Main():
   dT_discrete = T_wb_s
   O_discrete = [O_0]
   for k in xrange(len(wb[:-1])):
-    dO_discrete = dot(Lbi(O_discrete[k]), wb[k])
+    dO_discrete = dot(LBI(O_discrete[k]), wb[k])
     O_discrete.append(O_discrete[k] + (dO_discrete * dT_discrete))
     O_discrete[k+1] = O_discrete[k+1] % (2*pi)
 
@@ -267,7 +278,7 @@ def Main():
   #   O_temp = O_infinitesimal[k]
   #   wi = dot(HBI(O_temp), wb[k])
   #   for j in xrange(N_infinitesimal):
-  #     dO_temp = dot(Lbi(O_temp), dot(HIB(O_temp), wi))
+  #     dO_temp = dot(LBI(O_temp), dot(HIB(O_temp), wi))
   #     O_temp += dO_temp * dT_infinitesimal
   #   O_infinitesimal.append(O_temp)
 
