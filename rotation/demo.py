@@ -106,16 +106,70 @@ def HIB(O):
 def HBI(O):
   return transpose(HIB(O))
 
+def dHBI_dt(O, dOdt):
+  roll, pitch, yaw = O
+  droll, dpitch, dyaw = dOdt
+
+  dHBI = np.zeros((3,3))
+
+  dHBI[2,2] = (-s(roll)*droll)*c(pitch)
+  dHBI[2,2] += c(roll)*(-s(pitch)*dpitch)
+
+  dHBI[2,1] = (c(roll)*droll)*c(pitch)
+  dHBI[2,1] += s(roll)*(-s(pitch)*dpitch)
+
+  dHBI[2,0] = -c(pitch)*dpitch
+
+  dHBI[1,2] = (-c(roll)*droll)*c(yaw)
+  dHBI[1,2] += -s(roll)*(-s(yaw)*dyaw)
+  dHBI[1,2] += (-s(roll)*droll)*s(pitch)*s(yaw)
+  dHBI[1,2] += c(roll)*(c(pitch)*dpitch)*s(yaw)
+  dHBI[1,2] += c(roll)*s(pitch)*(c(yaw)*dyaw)
+
+  dHBI[1,1] = (-s(roll)*droll)*c(yaw)
+  dHBI[1,1] += c(roll)*(-s(yaw)*dyaw)
+  dHBI[1,1] += (c(roll)*droll)*s(pitch)*s(yaw)
+  dHBI[1,1] += s(roll)*(c(pitch)*dpitch)*s(yaw)
+  dHBI[1,1] += s(roll)*s(pitch)*(c(yaw)*dyaw)
+
+  dHBI[1,0] = (-s(pitch)*dpitch)*s(yaw)
+  dHBI[1,0] += c(pitch)*(c(yaw)*dyaw)
+
+  dHBI[0,2] = (c(roll)*droll)*s(yaw)
+  dHBI[0,2] += s(roll)*(c(yaw)*dyaw)
+  dHBI[0,2] += (-s(roll)*droll)*s(pitch)*c(yaw)
+  dHBI[0,2] += c(roll)*(c(pitch)*dpitch)*c(yaw)
+  dHBI[0,2] += c(roll)*s(pitch)*(-s(yaw)*dyaw)
+
+  dHBI[0,1] = (s(roll)*droll)*s(yaw)
+  dHBI[0,1] += -c(roll)*(c(yaw)*dyaw)
+  dHBI[0,1] += (c(roll)*droll)*s(pitch)*c(yaw)
+  dHBI[0,1] += s(roll)*(c(pitch)*dpitch)*c(yaw)
+  dHBI[0,1] += s(roll)*s(pitch)*(-s(yaw)*dyaw)
+
+  dHBI[0,0] = (-s(pitch)*dpitch)*c(yaw)
+  dHBI[0,0] += c(pitch)*(-s(yaw)*dyaw)
+
+  return dHBI
+
+# Convert the matrix representation of differential rotation into the vector representation of angular velocity
+def W_to_w(W):
+  w = np.zeros(3)
+  w[0] = W[1,0]
+  w[1] = W[0,2]
+  w[2] = W[2,1]
+  return w
+
 # wi (angular velocity in inertial frame) can be calculated as:
 # wi = dHBI/dt (O, dO/dt) * HIB(O)     (1)
 # wi = HBI(O) wb                       (2)
 # This gives us a nice way of checking for numerical consistency in the LBI transformation, and
 # without a known solution for wi, it's the best correctness check we have.
-def wi_1(O, dO):
-  return 0
+def wi_1(O, dOdt):
+  return W_to_w(dot(dHBI_dt(O,dOdt), HIB(O)))
 
-def wi_2(wb, O):
-  return 0
+def wi_2(O, wb):
+  return dot(HBI(O), wb)
 
 # O % (2*pi) required
 def LBI(O):
@@ -241,10 +295,15 @@ def Main():
 
   dT_discrete = T_wb_s
   O_discrete = [O_0]
+  dOdt_discrete = []
   for k in xrange(len(wb[:-1])):
-    dO_discrete = dot(LBI(O_discrete[k]), wb[k])
-    O_discrete.append(O_discrete[k] + (dO_discrete * dT_discrete))
+    dOdt_discrete.append(dot(LBI(O_discrete[k]), wb[k]))
+    O_discrete.append(O_discrete[k] + (dOdt_discrete[-1] * dT_discrete))
     O_discrete[k+1] = O_discrete[k+1] % (2*pi)
+  dOdt_discrete.append(dot(LBI(O_discrete[-1]), wb[-1]))
+
+  wi_est_1 = [wi_1(O_discrete[k], dOdt_discrete[k]) for k in xrange(len(O_discrete))]
+  wi_est_2 = [wi_2(O_discrete[k], wb[k]) for k in xrange(len(O_discrete))]
 
   # plt.plot(time_s, prettify(O_discrete))
   # plt.legend(["AX_ROLL", "AX_PITCH", "AX_YAW"])
@@ -262,29 +321,20 @@ def Main():
   inertial_body_x = [dot(HBI(o), body_x0) for o in O_discrete]
   inertial_body_y = [dot(HBI(o), body_y0) for o in O_discrete]
   inertial_body_z = [dot(HBI(o), body_z0) for o in O_discrete]
-  time_series = [inertial_body_x, inertial_body_y, inertial_body_z]
-  colors = ["r", "b", "k"]
+  time_series = [inertial_body_x, inertial_body_y, inertial_body_z, wi_est_1, wi_est_2]
+  colors = ["r", "b", "k", "c", "y"]
 
   animate(time_series, colors, F_wb_hz/2)
 
   ###############################################################################
-  # Error #1: O_infinitesimal is constant. That's just wrong. PDB is your friend.
+  # Error #1: wi_est_1 and wi_est_2 are not the same. Please make sure wi_est_1
+  # is really in skew anti-symmetric form before you vectorize.
   ###############################################################################
 
-  # N_infinitesimal = 10
-  # dT_infinitesimal = T_wb_s / N_infinitesimal
-  # O_infinitesimal = [O_0]
-  # for k in xrange(len(wb[:-1])):
-  #   O_temp = O_infinitesimal[k]
-  #   wi = dot(HBI(O_temp), wb[k])
-  #   for j in xrange(N_infinitesimal):
-  #     dO_temp = dot(LBI(O_temp), dot(HIB(O_temp), wi))
-  #     O_temp += dO_temp * dT_infinitesimal
-  #   O_infinitesimal.append(O_temp)
-
-  # plt.plot(time_s, prettify(O_infinitesimal))
-  # plt.legend(["AX_ROLL", "AX_PITCH", "AX_YAW"])
-  # plt.show()
+  ###############################################################################
+  # Error #2: When I try and subdivide, fixing wb and rotating 10x with dt/10,
+  # updating O each time.. I get a constant. That's just wrong. PDB is your friend.
+  ###############################################################################
 
 if __name__ == "__main__":
   Main()
