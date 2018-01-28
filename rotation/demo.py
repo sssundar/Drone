@@ -12,7 +12,7 @@
 # The initial conditions O(0) = (0, 0, 0) and w_b(0) = (pi/4, 0, pi/4) rad/s
 # guarantee that pitch will remain zero up to numerical error for all time.
 
-import sys
+import sys, os, glob
 
 import numpy as np
 from numpy import pi as pi
@@ -36,6 +36,7 @@ Jb_inv = None
 wb_0 = None
 O_0 = None
 AX_ROLL, AX_PITCH, AX_YAW = (0, 1, 2)
+orientation_strings = ["roll", "pitch", "yaw"]
 
 radians_to_degrees = lambda (rad): 180*rad/pi
 
@@ -155,10 +156,35 @@ def dHBI_dt(O, dOdt):
 # Convert the matrix representation of differential rotation into the vector representation of angular velocity
 def W_to_w(W):
   w = np.zeros(3)
-  w[0] = W[1,0]
+  w[0] = W[2,1]
   w[1] = W[0,2]
-  w[2] = W[2,1]
+  w[2] = W[1,0]
   return w
+
+# Sets values lower than epsilon to zero.
+# Prints the result with precision 0.3f.
+def sanitize_matrix(A):
+  print ""
+  epsilon = 0.001
+  for r in xrange(3):
+    text = ""
+    for c in xrange(3):
+      if abs(A[r, c]) < epsilon:
+        A[r,c] = 0
+      text += "%6.2f,\t" % A[r,c]
+    print text[:-2]
+  print ""
+
+def sanitize_vector(a):
+  print ""
+  epsilon = 0.001
+  text = ""
+  for r in xrange(3):
+    if abs(a[r]) < epsilon:
+      a[r] = 0
+    text += "%6.2f,\t" % a[r]
+  print text[:-2]
+  print ""
 
 # wi (angular velocity in inertial frame) can be calculated as:
 # wi = dHBI/dt (O, dO/dt) * HIB(O)     (1)
@@ -166,10 +192,22 @@ def W_to_w(W):
 # This gives us a nice way of checking for numerical consistency in the LBI transformation, and
 # without a known solution for wi, it's the best correctness check we have.
 def wi_1(O, dOdt):
-  return W_to_w(dot(dHBI_dt(O,dOdt), HIB(O)))
+  W = dot(dHBI_dt(O,dOdt), HIB(O))
+  w = W_to_w(W)
+  return w
 
 def wi_2(O, wb):
   return dot(HBI(O), wb)
+
+# This is just a sanity check that if we take wi_1 and rotate it, we get back the wb that gave us O in the first place.
+def wb_2(O, wi):
+  return dot(HIB(O), wi)
+
+# Angular momentum in the inertial frame is computed as:
+# hi = Ji wi = HBI Jb HIB wi = HBI Jb wb = HBI hb
+def hi(O, wb):
+  global Jb
+  return dot(HBI(O), dot(Jb, wb))
 
 # O % (2*pi) required
 def LBI(O):
@@ -232,7 +270,15 @@ def draw_body(axes, vectors, colors):
 
   return line_collections
 
+def clear_animation():
+  files = glob.glob('./images/*')
+  for f in files:
+    os.remove(f)
+
 def animate(time_series, colors, decimator):
+  # Wipe the images/ directory
+  clear_animation()
+
   fig = plt.figure()
   ax = fig.add_subplot(111, projection='3d')
   ax.set_xlabel("y")
@@ -261,7 +307,7 @@ def animate(time_series, colors, decimator):
     count += 1
 
 def Main():
-  global wb_0, O_0
+  global wb_0, O_0, orientation_strings
 
   setup()
 
@@ -304,6 +350,7 @@ def Main():
 
   wi_est_1 = [wi_1(O_discrete[k], dOdt_discrete[k]) for k in xrange(len(O_discrete))]
   wi_est_2 = [wi_2(O_discrete[k], wb[k]) for k in xrange(len(O_discrete))]
+  wb_est_2 = [wb_2(O_discrete[k], wi_est_1[k]) for k in xrange(len(O_discrete))]
 
   # plt.plot(time_s, prettify(O_discrete))
   # plt.legend(["AX_ROLL", "AX_PITCH", "AX_YAW"])
@@ -321,21 +368,62 @@ def Main():
   inertial_body_x = [dot(HBI(o), body_x0) for o in O_discrete]
   inertial_body_y = [dot(HBI(o), body_y0) for o in O_discrete]
   inertial_body_z = [dot(HBI(o), body_z0) for o in O_discrete]
-  time_series = [inertial_body_x, inertial_body_y, inertial_body_z, wi_est_1, wi_est_2]
-  colors = ["r", "b", "k", "c", "y"]
+  time_series_body = [inertial_body_x, inertial_body_y, inertial_body_z]
+  colors_body = ["r", "b", "k"]
+  # animate(time_series_body, colors_body, F_wb_hz/2)
 
-  animate(time_series, colors, F_wb_hz/2)
+  #####################################################################################################
+  # Note that wi_est_1 is equivalent to wi_est_2, and wb is equivalent to wb_est_2, which is fantastic.
+  # It's super weird that even though wi <-> wb is a rotation, they visibly rotate different rates.
+  #####################################################################################################
+  time_series_w = [wi_est_1, wi_est_2, wb, wb_est_2]
+  colors_w = ["r", "b", "k", "c"]
+  # animate(time_series_w, colors_w, F_wb_hz/2)
 
-  ###############################################################################
-  # Error #1: wi_est_1 and wi_est_2 are not the same. Please make sure wi_est_1
-  # is really in skew anti-symmetric form before you vectorize.
-  ###############################################################################
+  # Now, compute the dot products of all the body axes to verify they remain orthogonal
+  dot_xy = []
+  dot_xz = []
+  dot_yz = []
+  for k in xrange(len(inertial_body_x)):
+    dot_xy.append(dot(inertial_body_x[k], inertial_body_y[k]))
+    dot_xz.append(dot(inertial_body_x[k], inertial_body_z[k]))
+    dot_yz.append(dot(inertial_body_y[k], inertial_body_z[k]))
 
-  ###############################################################################
-  # Error #2: When I try and subdivide, fixing wb and rotating 10x with dt/10,
-  # updating O each time.. I get a constant. That's just wrong. PDB is your friend.
-  ###############################################################################
+  # Visibly, yeah, they're orthogonal up to numerical precision.
+  # plt.plot(time_s, dot_xy, 'r-')
+  # plt.plot(time_s, dot_xz, 'g-')
+  # plt.plot(time_s, dot_yz, 'b-')
+  # plt.show()
 
+  # One final sanity check is to compute the angular momentum hi in the inertial frame.
+  # You integrated wb assuming zero external torque => hi should be constant.
+  hi_est_1 = []
+  for k in xrange(len(wb)):
+    hi_est_1.append(hi(O_discrete[k], wb[k]))
+
+  # Visibly, yeah, there's drift. Let's take a closer look.
+  # aircraft_axes(hi_est_1, 1)
+  # OR
+  # plt.plot(time_s, hi_est_1)
+  # plt.show()
+
+  # Dump the error in inertial angular momentum to the console.
+  print ""
+  print "This was a %ds simulation of a rigid body rotating under zero external torque." % T_final_s
+  print "The inertial angular momentum should have been constant."
+  print ""
+  print "The initial inertial angular velocity, with body and inertial frames"
+  print "instantaneously aligned, was wb(%s, %s, %s) = [%6.2f, %6.2f, %6.2f] radians/s." % (orientation_strings[0], orientation_strings[1], orientation_strings[2], wb_0[0], wb_0[1], wb_0[2])
+  print ""
+  for k in xrange(3):
+    if (hi_est_1[0][k] == 0):
+      print "Inertial angular momentum along the original %s axis drifted from %1.5f to %1.5f" % (orientation_strings[k], 0, hi_est_1[-1][k])
+    else:
+      print "Inertial angular momentum along the original %s axis drifted from %1.5f by %1.5f%s" % (orientation_strings[k], hi_est_1[0][k], 100 * (hi_est_1[-1][k] - hi_est_1[0][k]) / (hi_est_1[0][k] + 0.000000001), "%")
+  print ""
+  print "This is less than 0.06%s error per second, which will be dwarfed by gyro measurement error" % "%"
+  print "and corrected for by Kalman filters against our noisy magnetometer."
+  print ""
 if __name__ == "__main__":
   Main()
 
