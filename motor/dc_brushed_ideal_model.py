@@ -1,5 +1,9 @@
 #! /usr/bin/python
 
+# Usage
+# source activate hack
+# python dc_brushed_ideal_model.py
+
 import sys
 from math import pi, exp
 from matplotlib import pyplot as plt
@@ -10,16 +14,16 @@ from numpy import linspace
 # 2. The motor is perfectly efficient. Torque and back-emf are linear in motor current and motor w, respectively.
 # 3. Electrical inductance reaches steady state on us timescales and can be neglected in the mechanical dynamics.
 
-# Free Parameters (chosen to hit w ~ 20,000 rad/s in ~0.5s)
+# Free Parameters (chosen to hit f ~ 6000 RPM in ~0.1s and draw 2-4 A)
 w_0 = 0.0 # rad/s
 t_0 = 0.0 # s
 t_sim_s = 1.0
 t_pwm_s = 0.002
 j_mp = 0.00003 # kg * m^2 / s
-k_i = 0.04 # N * m / A
+k_i = 0.4 # N * m / A
 v_s = 7.4 # V
-r_w = 0.01 # Ohms
-k_d = 0.005 # N * m / (rev / s)
+r_w = 0.5 # Ohms
+k_d = 0.01 # N * m / (rev / s)
 
 # Derived Parameters
 k_v = k_i / (2*pi) # volts / (rev / s)
@@ -36,7 +40,7 @@ def freewheel(t, w, d):
   return (t + t_pwm_s * (1.0-d), w * exp(-alpha(k_d)*t_pwm_s*(1.0-d)))
 
 # Plots a time series from t = [0, t_sim_s] of w(t,d)
-def evolution(d, should_show):
+def evolution(ax1, ax2, d, should_show):
   if d > 1.0 or d < 0.0:
     raise ValueError("Invalid duty cycle. d must be in [0,1].")
   time_s = [t_0]
@@ -51,16 +55,26 @@ def evolution(d, should_show):
       just_drove = False
     time_s.append(t)
     w.append(v)
-  plt.plot(time_s, [x * 60.0 / (2*pi) for x in w], 'k.-')
+  f = [x / (2*pi) for x in w]
+  rpm = [x * 60 for x in f]
+  i = [(v_s - (k_v * x)) / r_w for x in f]
+
+  ax1.plot(time_s, rpm, 'k.-')
+  ax2.plot(time_s, i, 'k.-')
+
   if should_show:
     plt.show()
 
 def evolutions():
-  d = linspace(0, 1, 15)
+  d = linspace(0, 1, 5)
+  fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+
   for duty in d:
-    evolution(duty, False)
-  plt.xlabel("PWM Duty Cycle")
-  plt.ylabel("Motor Frequency (rpm)")
+    evolution(ax1, ax2, duty, False)
+
+  ax1.set_ylabel("Motor RPM")
+  ax2.set_ylabel("Motor Amps")
+  ax2.set_xlabel("PWM Duty Cycle")
   plt.show()
 
 def w_equil(d):
@@ -88,7 +102,7 @@ def transfer(should_show):
 
 def transfers():
   global k_d
-  kds = linspace(k_i/10000000, k_i, 20)
+  kds = linspace(k_i/100, k_i, 40)
   for k in kds:
     k_d = k
     transfer(False)
