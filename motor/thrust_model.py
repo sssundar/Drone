@@ -12,14 +12,14 @@ from scipy import optimize as optimize
 from matplotlib import pyplot as plt
 
 # Parameters
-N_Vp = 5
+N_Vp = 3
 Vp_volts = {"1s":np.linspace(3.2,4.2,N_Vp), "2s":np.linspace(6.4,8.4,N_Vp)}
 N_motors = 4.0
 R_motor_ohms = 0.58
-R_ds_ohms = 0.05
-EMF2_TO_THRUST = 5.0
-AVGI_TO_EMF = 1.5
-R_battery_ohms = 0.08
+R_ds_ohms = 0.025
+EMF2_TO_THRUST = 5
+AVGI_TO_EMF = 1.2
+R_battery_ohms = 0.124
 duty_cycle = np.linspace(0.05,0.95,20)
 alpha = (EMF2_TO_THRUST*(AVGI_TO_EMF**2))/(N_motors*R_battery_ohms + R_ds_ohms + R_motor_ohms)
 beta = alpha/np.sqrt(EMF2_TO_THRUST)
@@ -44,11 +44,13 @@ def visualize():
   # For each Vp in set "1s"
   for supply_volts in Vp_volts["1s"]:
     plt.plot(duty_cycle, gsolve(supply_volts), "r-")
+  plt.grid(True)
 
   plt.subplot(212)
   # For each Vp in set "2s"
   for supply_volts in Vp_volts["2s"]:
     plt.plot(duty_cycle, gsolve(supply_volts), "b-")
+  plt.grid(True)
 
   plt.show()
 
