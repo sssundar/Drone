@@ -211,6 +211,7 @@ def trace_rotation(trace, time_it, sanity_checks, hpf):
     plt.plot(trace["s"], [q[1][1] for q in e0_b])
     plt.plot(trace["s"], [q[1][2] for q in e0_b])
     plt.legend(["e0_x", "e0_y", "e0_z"])
+    plt.ylim([-0.5,1.2])
     plt.ylabel("Direction Cosines\nfor e0")
 
     plt.subplot(413)
@@ -218,6 +219,7 @@ def trace_rotation(trace, time_it, sanity_checks, hpf):
     plt.plot(trace["s"], [q[1][1] for q in e1_b])
     plt.plot(trace["s"], [q[1][2] for q in e1_b])
     plt.legend(["e1_x", "e1_y", "e1_z"])
+    plt.ylim([-0.5,1.2])
     plt.ylabel("Direction Cosines\nfor e1")
 
     plt.subplot(414)
@@ -225,6 +227,7 @@ def trace_rotation(trace, time_it, sanity_checks, hpf):
     plt.plot(trace["s"], [q[1][1] for q in e2_b])
     plt.plot(trace["s"], [q[1][2] for q in e2_b])
     plt.legend(["e2_x", "e2_y", "e2_z"])
+    plt.ylim([-0.5,1.2])
     plt.ylabel("Direction Cosines\nfor e2")
     plt.xlabel("seconds")
     plt.show()
@@ -273,4 +276,4 @@ if __name__ == "__main__":
   # We need to kill the DC term and keep the rest near-level gain.
   # Phase... well, mechanical timescales are slow. Let's hope phase doesn't matter (incl. correction).
   # See hpf.py. Wow!
-  trace_rotation(w_b, True, False, False)
+  trace_rotation(w_b, True, False, True)
