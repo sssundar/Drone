@@ -5,11 +5,19 @@ import numpy as np
 def vector_norm(w):
   return np.sqrt(sum(w*w))
 
+# @param[in] n A numpy 3-vector representing an axis of rotation
+# @param[in] theta An angle in radians
+# @return Returns a quaternion of the form exp(0.5*theta*n) in [r, v (numpy 3-vector)] notation
+def axis_angle_to_quaternion(n,theta):
+  c = np.cos((theta*1.0)/2)
+  s = np.sin((theta*1.0)/2)
+  return [c, n * s]
+
 # @param[in] w A numpy 3-vector representing the angular velocity
 # @param[in] dt A time, in seconds, to rotate at this angular velocity
 # @return Let w_hat = w/|w| be a unit axis of rotation, and theta = |w|dt be the angle of rotation about that axis.
 #         This function returns a quaternion of the form exp(0.5*theta*w_hat)
-def quaternion_exponential(w,dt):
+def w_dt_to_quaternion(w,dt):
   w_norm = vector_norm(w)
   if (w_norm > 1E-9):
     unit_w = w/w_norm
@@ -41,7 +49,7 @@ def quaternion_norm(q):
 
 # @param[in] p, q A quaternion of the form [r, v] where v is a numpy 3-vector
 # @param[in] normalize A boolean indicating whether the quaternion product is to be normalized (useful for rotation).
-# @return - pq, possibly normalized by its magnitude
+# @return pq, possibly normalized by its magnitude
 def quaternion_product(p, q, normalize):
   r1, v1 = p
   r2, v2 = q
