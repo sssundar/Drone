@@ -1,2 +1,4 @@
 *.pyc
 images/*
+actual_rotation/*
+estimated_rotation/*

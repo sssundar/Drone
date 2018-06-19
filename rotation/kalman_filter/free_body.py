@@ -57,9 +57,6 @@ def simulate(inputs):
   J_b = np.dot(np.dot(R, inputs["J_bp"]), np.transpose(R))
   J_b_inv = np.linalg.inv(J_b)
 
-  print inputs["J_bp"]
-  print J_b
-
   # Use q to compute the initial angular velocity as seen from the body frame
   w_b0 = quaternion_rotation([0, inputs["w_bp"]], q)[1]
 
@@ -107,7 +104,7 @@ def check_principal(axis):
   inputs = {}
   inputs["r_i_bp"] = [np.asarray([0,0,1]), 0] # Standard inertial frame IS the principal body frame (initially)
   inputs["r_bp_b"] = [np.asarray([0,0,1]), 0] # Principal body frame IS the actual body frame
-  inputs["J_bp"] = (1.0/12) * 0.05 * np.eye(3) # A uniform cubic 50g mass of length 1 m has J = M/12 I where M is the total mass.
+  inputs["J_bp"] = (1.0/6) * 0.05 * np.eye(3) # A uniform cubic 50g mass of length 1 m has J = M/12 I where M is the total mass.
   if axis == 'x':
     inputs["w_bp"] = 2*np.pi*np.asarray([1,0,0]) # 1 Hz CCW rotation about the body x-axis is a 1 Hz CCW rotation about the inertial x axis.
   elif axis == 'y':
@@ -131,7 +128,7 @@ def check_misalignment():
   inputs = {}
   inputs["r_i_bp"] = [np.asarray([1,0,0]), np.pi/2] # Principal body frame is initially rotated 90 degrees about the inertial x axis.
   inputs["r_bp_b"] = [np.asarray([0,1,0]), np.pi/4] # Actual body frame is rotated 45 degrees about the principal y axis
-  inputs["J_bp"] = (1.0/12) * 0.05 * np.eye(3) # A uniform cubic 50g mass of length 1 m has J = M/12 I where M is the total mass.
+  inputs["J_bp"] = (1.0/6) * 0.05 * np.eye(3) # A uniform cubic 50g mass of length 1 m has J = M/6 I where M is the total mass.
   inputs["w_bp"] = 2*np.pi*np.asarray([0,0,1]) # 1 Hz CCW rotation about the principal body z-axis, initially.
   inputs["f_s"] = 100.0 # Hz
   inputs["t_f"] = 1.0 # seconds
