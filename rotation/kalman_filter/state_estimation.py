@@ -58,7 +58,7 @@ def naive(hpf):
   e0_act, e1_act, e2_act = generate_body_frames(outputs["q_i"])
   e0_est, e1_est, e2_est = generate_body_frames(r_i)
 
-  # It is clear both
+  # TODO These look funny. First things first: with zero initial offset, do they track exactly?
   # animate(N, e0_act, e1_act, e2_act, 5)
   animate(N, e0_est, e1_est, e2_est, 5)
   # compare(N, e0_est, e1_est, e2_est, e0_act, e1_act, e2_act, 5)
