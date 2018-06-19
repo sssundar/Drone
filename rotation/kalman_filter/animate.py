@@ -1,6 +1,7 @@
 import sys, glob, os
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from quaternions import *
 
 def draw_body(axes, vectors, colors):
   line_collections = []
@@ -13,7 +14,7 @@ def draw_body(axes, vectors, colors):
     V = vector[1][1]
     W = vector[1][2]
 
-    line_collections.append(axes.quiver(Y,X,Z,V,U,W, length=0.05, arrow_length_ratio=0.05, pivot='tail', color=colors[m]))
+    line_collections.append(axes.quiver(X,Y,Z,U,V,W, length=0.05, arrow_length_ratio=0.05, pivot='tail', color=colors[m]))
 
   return line_collections
 
@@ -21,6 +22,21 @@ def clear_animation():
   files = glob.glob('./images/*')
   for f in files:
     os.remove(f)
+
+# @brief  Takes a time series of quaternions representing the body-frame relative to the inertial frame from the POV of the inertial frame.
+#         Generates a series of 3-vectors representing the body axes, for animation.
+def generate_body_frames(quats):
+  e0 = [0,np.asarray([1,0,0])]
+  e1 = [0,np.asarray([0,1,0])]
+  e2 = [0,np.asarray([0,0,1])]
+  e0_b = []
+  e1_b = []
+  e2_b = []
+  for q in quats:
+    e0_b.append(quaternion_rotation(e0, q))
+    e1_b.append(quaternion_rotation(e1, q))
+    e2_b.append(quaternion_rotation(e2, q))
+  return (e0_b, e1_b, e2_b)
 
 # @brief Takes a time series of unit body-axes (quaternion form [scalar r, 3-vector v]) relative to an inertial frame.
 #        Decimates this time series and creates a series of still images which can be strung together as an animation of the rotation.
@@ -39,11 +55,6 @@ def animate(n_vectors, q_e0, q_e1, q_e2, decimator):
   ax.set_xlabel("x")
   ax.set_ylabel("y")
   ax.set_zlabel("z")
-  # Aircraft Axes
-  # ax.set_xlabel("y")
-  # ax.set_ylabel("x")
-  # ax.set_zlabel("z")
-  # ax.invert_zaxis()
 
   line_collections = None
   count = 0
