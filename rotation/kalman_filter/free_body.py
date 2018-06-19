@@ -57,6 +57,9 @@ def simulate(inputs):
   J_b = np.dot(np.dot(R, inputs["J_bp"]), np.transpose(R))
   J_b_inv = np.linalg.inv(J_b)
 
+  print inputs["J_bp"]
+  print J_b
+
   # Use q to compute the initial angular velocity as seen from the body frame
   w_b0 = quaternion_rotation([0, inputs["w_bp"]], q)[1]
 
@@ -66,7 +69,7 @@ def simulate(inputs):
   # the inertial frame to the principal body frame.
   q_i = axis_angle_to_quaternion(inputs["r_i_bp"][0], inputs["r_i_bp"][1])
   n = quaternion_rotation([0, inputs["r_bp_b"][0]], q_i)[1] # Inertial representation of principal body - to - body rotation axis
-  q_b = axis_angle_to_quaternion(n, inputs["r_i_bp"][1])
+  q_b = axis_angle_to_quaternion(n, inputs["r_bp_b"][1])
   q_ib = quaternion_product(p=q_b, q=q_i, normalize=True) # Represents the initial inertial rotation from I to B.
                                                           # The coordinate transoformation would use the inverse.
 
@@ -126,8 +129,8 @@ def check_principal(axis):
 def check_misalignment():
   # Do the initial rotations of the principal and body axes relative to the inertial frame look right?
   inputs = {}
-  inputs["r_i_bp"] = [np.asarray([1,0,0]), 0] # Principal body frame is initially rotated 90 degrees about the inertial x axis.
-  inputs["r_bp_b"] = [np.asarray([0,1,0]), 0] # Actual body frame is coincident with principal body frame... for now.
+  inputs["r_i_bp"] = [np.asarray([1,0,0]), np.pi/2] # Principal body frame is initially rotated 90 degrees about the inertial x axis.
+  inputs["r_bp_b"] = [np.asarray([0,1,0]), np.pi/4] # Actual body frame is rotated 45 degrees about the principal y axis
   inputs["J_bp"] = (1.0/12) * 0.05 * np.eye(3) # A uniform cubic 50g mass of length 1 m has J = M/12 I where M is the total mass.
   inputs["w_bp"] = 2*np.pi*np.asarray([0,0,1]) # 1 Hz CCW rotation about the principal body z-axis, initially.
   inputs["f_s"] = 100.0 # Hz
@@ -136,11 +139,33 @@ def check_misalignment():
 
   outputs = simulate(inputs)
 
-  # Check: Animate it. Orientations look right?
+  # Check: Animate it. Initial orientation looks right?
   # Status: Pass.
   e0, e1, e2 = generate_body_frames(outputs["q_i"])
   N_frames = len(outputs["t_s"])
-  animate(N_frames, e0, e1, e2, 5)
+  animate(N_frames, e0, e1, e2, 100)
+
+def check_precession():
+  # Let's misalign our body and principal body axes. Do we precess?
+  inputs = {}
+  inputs["r_i_bp"] = [np.asarray([1,0,0]), np.pi/2] # Principal body frame is initially rotated 90 degrees about the inertial x axis.
+  inputs["r_bp_b"] = [np.asarray([0,1,0]), np.pi/10] # Actual body frame is rotated 18 degrees about the principal y axis
+  inputs["J_bp"] = np.zeros([3,3])
+  inputs["J_bp"][0,0] = 1
+  inputs["J_bp"][1,1] = 2
+  inputs["J_bp"][2,2] = 3
+  inputs["w_bp"] = 2*np.pi*np.asarray([0,0,1]) # 1 Hz CCW rotation about the principal body z-axis, initially.
+  inputs["f_s"] = 800.0 # Hz
+  inputs["t_f"] = 5.0 # seconds
+  inputs["m_i"] = np.asarray([0,0,1]) # Normalized magnetic field points straight up when the body is aligned with the inertial frame.
+
+  outputs = simulate(inputs)
+
+  # Check: Animate it. Does it look reasonable?
+  # Status: Pass.
+  e0, e1, e2 = generate_body_frames(outputs["q_i"])
+  N_frames = len(outputs["t_s"])
+  animate(N_frames, e0, e1, e2, 80)
 
 if __name__ == "__main__":
   # Run some sanity checks!
@@ -150,9 +175,12 @@ if __name__ == "__main__":
   elif len(sys.argv) == 2:
     if sys.argv[1] == 'check_misalignment':
       check_misalignment()
+    elif sys.argv[1] == 'check_precession':
+      check_precession()
   else:
     print ""
     print "Usage: python free_body.py check_principal x|y|z"
     print "Usage: python free_body.py check_misalignment"
+    print "Usage: python free_body.py check_precession"
     print ""
     sys.exit(0)
