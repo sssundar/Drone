@@ -18,8 +18,8 @@ def draw_body(axes, vectors, colors):
 
   return line_collections
 
-def clear_animation():
-  files = glob.glob('./images/*')
+def clear_animation(where):
+  files = glob.glob('./%s/*' % where)
   for f in files:
     os.remove(f)
 
@@ -46,9 +46,9 @@ def generate_body_frames(quats):
 # @param[in] q_e1 The 'y' body axis, of unit norm
 # @param[in] q_e2 The 'z' body axis, of unit norm
 # @param[in] decimator The factor by which to decimate the time series.
-def animate(n_vectors, q_e0, q_e1, q_e2, decimator):
+def animate(n_vectors, q_e0, q_e1, q_e2, decimator, where="images"):
   # Wipe the images/ directory
-  clear_animation()
+  clear_animation(where)
 
   fig = plt.figure()
   ax = fig.add_subplot(111, projection='3d')
@@ -71,7 +71,7 @@ def animate(n_vectors, q_e0, q_e1, q_e2, decimator):
 
     line_collections = draw_body(ax, [q_e0[n], q_e1[n], q_e2[n]], ["r", "g", "b"])
 
-    plt.savefig('images/Frame%08i.png' % n)
+    plt.savefig('%s/Frame%08i.png' % (where, n))
     plt.draw()
 
     count += 1

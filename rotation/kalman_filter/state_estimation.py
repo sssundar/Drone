@@ -55,13 +55,39 @@ def naive(hpf):
 
     r_i.append(quaternion_product(p=w_dt_to_quaternion(w_i, dt), q=r_i[-1], normalize=True))
 
+  #################
+  # Sanity Checks #
+  #################
+
   e0_act, e1_act, e2_act = generate_body_frames(outputs["q_i"])
   e0_est, e1_est, e2_est = generate_body_frames(r_i)
 
-  # TODO These look funny. First things first: with zero initial offset, do they track exactly?
-  # animate(N, e0_act, e1_act, e2_act, 5)
-  animate(N, e0_est, e1_est, e2_est, 5)
-  # compare(N, e0_est, e1_est, e2_est, e0_act, e1_act, e2_act, 5)
+  # What we're saying here is: take my initial body frame (unknown) as an inertial frame.
+  # Track the net rotation relative to this frame. Do a coordinate transformation of the result to the 'standard' inertial frame.
+  # Note in this case we don't actually know q_i[0] and we will eventually have noise in w_b.
+  # Still, if we choose, we could separate integration from correction.
+  e0_cor, e1_cor, e2_cor = generate_body_frames([quaternion_product(p=outputs["q_i"][0], q=r_i[idx], normalize=True) for idx in xrange(len(r_i))])
+
+  # First, single principal axis rotations:
+    # With zero initial offset, do they track exactly? Yes.
+
+    # With 90 degree principal rotation, do they track with constant offset? Yes!
+    # Visually, they are always a 90 degree rotation about the inertial x axis apart.
+    # Since it's a rotation about a single principal axis it's not difficult to see this algebraically as well.
+
+  # animate(N, e0_act, e1_act, e2_act, 5, "actual_rotation")
+  # animate(N, e0_est, e1_est, e2_est, 5, "estimated_rotation")
+  # animate(N, e0_cor, e1_cor, e2_cor, 5, "images")
+
+  # Next, off-axis rotations:
+    # Well, we can see from e*_ofs that q_i[0] * r_i[n] = q_i[n].
+    # This means we expect q_i[n] r_i[n]^-1 to be a constant quaternion.
+    # We can see that over the course of 1s we have a few degrees of drift in this 'constant' quaternion.
+    # That's certainly something that can be corrected for.
+  e0_ofs, e1_ofs, e2_ofs = generate_body_frames([quaternion_product(p=outputs["q_i"][idx], q=quaternion_inverse(r_i[idx]), normalize=True) for idx in xrange(len(r_i))])
+  animate(N, e0_ofs, e1_ofs, e2_ofs, 5, "images")
+
+# Ok - green light. Proceed with your filter design, followed by the realism module.
 
 if __name__ == "__main__":
   if len(sys.argv) == 3:
