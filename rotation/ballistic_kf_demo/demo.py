@@ -25,8 +25,8 @@ def dynamics(t):
   m[2,0] = 1
   m[3,1] = 1
 
-  b = zeros([1,4])
-  b[0,1] = -9.8
+  b = zeros([1,4])[0]
+  b[1] = -9.8
   return m, b
 
 def Main():
@@ -35,20 +35,23 @@ def Main():
     m, b = dynamics(t)
     return dot(m, x) + b
   dt = 0.01
-  T_final = 10
+  T_final = 100
   N_samples = int( T_final / dt )
   time_s = linspace(0, T_final, N_samples)
-  x_truth_0 = zeros([1,4])
-  x_truth_0[0,0] = 100
-  x_truth_0[0,3] = 200
+  x_truth_0 = zeros([1,4])[0]
+  x_truth_0[0] = 100
+  x_truth_0[3] = 200
   x_truth = odeint(ddt_x, x_truth_0, t = time_s)
 
   # Realism
-  # TODO Add noise to x_truth drawn from the Normal Distribution (sigma_n, mu_n)
   sigma_n = eye(4) * (100**2)
   sigma_n_inv = inverse(sigma_n)
-  mu_n = zeros([1,4])
+  mu_n = zeros([1,4])[0]
+  # Add noise to x_truth drawn from the Normal Distribution (sigma_n, mu_n)
   x_measured = []
+  for x in x_truth:
+    noise = np.random.multivariate_normal(mean=mu_n, cov=sigma_n)
+    x_measured.append(x + noise)
 
   # Estimation
   A, g = dynamics(0) # Model Dynamics are Time-Invariant (aka incorrect)
@@ -57,7 +60,7 @@ def Main():
   A_inv = inverse(A)
 
   prior_sigma = eye(4) * (1000**2)
-  prior_mu = zeros([1,4])
+  prior_mu = zeros([1,4])[0]
   x_estimated = []
   for x in x_measured:
     # Step A: Use measurement in posterior estimate. Save the mean for plots.
@@ -74,7 +77,7 @@ def Main():
     prior_mu = dot(A, posterior_mu) + g
 
     # Step C: Sample future state and feed back model prediction error to adjust the covariance of the prior
-    gain = 1 + (1*(ln() - ln())) # TODO compute ln of gaussian probabilities
+    gain = 1 # + (1*(ln() - ln())) # TODO compute ln of gaussian probabilities
     prior_sigma = gain * prior_sigma
 
   plt.plot(time_s, x_truth, 'k-')
