@@ -35,7 +35,7 @@ def Main():
     m, b = dynamics(t)
     return dot(m, x) + b
   dt = 0.01
-  T_final = 100
+  T_final = 20
   N_samples = int( T_final / dt )
   time_s = linspace(0, T_final, N_samples)
   x_truth_0 = zeros([1,4])[0]
@@ -62,7 +62,17 @@ def Main():
   prior_sigma = eye(4) * (1000**2)
   prior_mu = zeros([1,4])[0]
   x_estimated = []
+  is_first_sample = True
   for x in x_measured:
+    if not is_first_sample:
+      # Step C: Sample future state and feed back model prediction error to adjust the covariance of the prior
+      k = 5E-11 # Hand-tuned
+      log_likelihood_ratio = 0.5*dot(x-prior_mu, dot(sigma_n, x-prior_mu))
+      gain = 1 + k*log_likelihood_ratio
+      prior_sigma = gain * prior_sigma
+
+    is_first_sample = False
+
     # Step A: Use measurement in posterior estimate. Save the mean for plots.
     prior_sigma_inv = inverse(prior_sigma)
     posterior_sigma_inv = prior_sigma_inv + sigma_n_inv
@@ -75,10 +85,6 @@ def Main():
     prior_sigma_inv = dot(transpose(A_inv), dot(posterior_sigma_inv, A_inv))
     prior_sigma = inverse(prior_sigma_inv)
     prior_mu = dot(A, posterior_mu) + g
-
-    # Step C: Sample future state and feed back model prediction error to adjust the covariance of the prior
-    gain = 1 # + (1*(ln() - ln())) # TODO compute ln of gaussian probabilities
-    prior_sigma = gain * prior_sigma
 
   plt.plot(time_s, x_truth, 'k-')
   plt.plot(time_s, x_measured, 'rx')
