@@ -29,6 +29,14 @@ def dynamics(t):
   b[1] = -9.8
   return m, b
 
+def tracer(diagonal):
+  m = zeros([4,4])
+  m[0,0] = diagonal[0]
+  m[1,1] = diagonal[1]
+  m[2,2] = diagonal[2]
+  m[3,3] = diagonal[3]
+  return m
+
 def Main():
   # Simulation
   def ddt_x(x, t):
@@ -56,6 +64,8 @@ def Main():
   # State Estimation where prior variance is adjusted with proportional feedback
   # Q:  Why is the y-velocity offset from the truth by -10 m/s?
   #     This is proportional gain in action! Steady state offset error!
+  #     PI feedback (ki * integral of sigma^-1 (x-mu) added to diagonal)
+  #     kills the steady state offset but introduces sudden discontinuities in the estimates.
   A, g = dynamics(0) # Model Dynamics are Time-Invariant (aka incorrect)
   g = g*dt
   A = A*dt + eye(4)
@@ -68,10 +78,10 @@ def Main():
   for x in x_measured:
     if not is_first_sample:
       # Step C: Sample future state and feed back model prediction error to adjust the covariance of the prior
-      k = 5E-3 # Hand-tuned
+      kp = 5E-3 # Hand-tuned
       log_likelihood_ratio = 0.5*dot(x-prior_mu, dot(sigma_n_inv, x-prior_mu))
-      gain = 1 + k*log_likelihood_ratio
-      prior_sigma = gain * prior_sigma
+      gain = 1 + kp*log_likelihood_ratio
+      prior_sigma = gain*prior_sigma
 
     is_first_sample = False
 
