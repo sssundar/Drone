@@ -35,7 +35,7 @@ def Main():
     m, b = dynamics(t)
     return dot(m, x) + b
   dt = 0.01
-  T_final = 20
+  T_final = 50
   N_samples = int( T_final / dt )
   time_s = linspace(0, T_final, N_samples)
   x_truth_0 = zeros([1,4])[0]
@@ -53,7 +53,22 @@ def Main():
     noise = np.random.multivariate_normal(mean=mu_n, cov=sigma_n)
     x_measured.append(x + noise)
 
-  # Estimation
+  # State Estimation with a simple windowed time average.
+  window = []
+  x_avg = []
+  n_window = 5
+  for x in x_measured:
+    window.append(x)
+    if len(window) > n_window:
+      window.pop(0)
+    if len(window) == n_window:
+      x_avg.append(sum(window)/n_window)
+    else:
+      x_avg.append(zeros([1,4])[0])
+
+  # State Estimation where prior variance is adjusted with feedback
+  # TODO  Why is the y-velocity offset from the truth by 10 m/s?
+  #       Maybe this is what happens with proportional gain. You could try a PI feedback.
   A, g = dynamics(0) # Model Dynamics are Time-Invariant (aka incorrect)
   g = g*dt
   A = A*dt + eye(4)
@@ -88,6 +103,7 @@ def Main():
 
   plt.plot(time_s, x_truth, 'k-')
   plt.plot(time_s, x_measured, 'rx')
+  plt.plot(time_s, x_avg, 'k--')
   plt.plot(time_s, x_estimated, 'b--')
   plt.show()
 
