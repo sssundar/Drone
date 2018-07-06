@@ -28,10 +28,15 @@ from animate import generate_body_frames, animate
 #                                     a hard-coded lookup of the local declination...
 #                 note even if we're wrong in this... our controller will just adjust the reference attitude until we come to rest at our desired position.
 #                 it will think it is tilted, but really the mechanics will require it to be horizontal to be at rest.
+#             - a_i: a numpy 3-vector. unitless.
+#                 a unit vector representing the direction of the Earth's local gravitational field when the body frame is coincident with the standard inertial frame.
 #
 # @return outputs, a dictionary with the following fields:
 #             - m_i: a numpy 3-vector. unitless.
 #                 a unit vector representing the direction of the Earth's local magnetic field when the body frame is coincident with the standard inertial frame.
+#                 intended as an input to the realism module
+#             - a_i: a numpy 3-vector. unitless.
+#                 a unit vector representing the direction of the Earth's local gravitational field when the body frame is coincident with the standard inertial frame.
 #                 intended as an input to the realism module
 #             - t_s: a list of sample times (seconds) of length (t_f - 0) * f_s
 #             - q_i: a list of quaternions [r, v] where v is a numpy 3-vector
@@ -41,6 +46,8 @@ from animate import generate_body_frames, animate
 #             - w_b: a list of numpy 3-vectors [rad/s] representing ideal samples from a gyroscope coincident with the body frame
 #                 intended as an input to the realism module
 #             - m_b: a list of numpy 3-vectors [unit norm, unitless] representing ideal samples of the direction of the Earth's magnetic field from a 3D compass coincident with the body frame
+#                 intended as an input to the realism module
+#             - a_b: a list of numpy 3-vectors [unit norm, unitless] representing ideal samples of the direction of the Earth's gravitational field from a 3D accelerometer coincident with the body frame
 #                 intended as an input to the realism module
 def simulate(inputs):
   # Get the time step for this simulation
