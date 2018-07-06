@@ -39,10 +39,9 @@ from animate import generate_body_frames, animate
 #                 a unit vector representing the direction of the Earth's local gravitational field when the body frame is coincident with the standard inertial frame.
 #                 intended as an input to the realism module
 #             - t_s: a list of sample times (seconds) of length (t_f - 0) * f_s
-#             - q_i: a list of quaternions [r, v] where v is a numpy 3-vector
+#             - q_b: a list of quaternions [r, v] where v is a numpy 3-vector
 #                    of the same length as t
-#                 represents the 'ground truth' rotation of the body frame relative to the standard inertial frame
-#                 as computed without sampling noise, bias, etc. slightly inaccurate due to numerical error but it's the best truth we've got by several orders of magnitude (see rotation/demo.py)
+#                 represents the 'ground truth' coordinate transformations. rotating a vector v_b by q_b yields v_i. computed without sampling noise, bias, etc.
 #             - w_b: a list of numpy 3-vectors [rad/s] representing ideal samples from a gyroscope coincident with the body frame
 #                 intended as an input to the realism module
 #             - m_b: a list of numpy 3-vectors [unit norm, unitless] representing ideal samples of the direction of the Earth's magnetic field from a 3D compass coincident with the body frame
@@ -68,14 +67,10 @@ def simulate(inputs):
   w_b0 = quaternion_rotation([0, inputs["w_bp"]], q)[1]
 
   # Get the quaternion which represents the rotation from the standard inertial frame to the initial body frame
-  # First, recall that we specified the rotation from the principal body frame to the body frame from the POV of the principal body frame.
-  # We need to convert this axis of rotation to the standard inertial frame then combine it with the known rotation from
-  # the inertial frame to the principal body frame.
-  q_i = axis_angle_to_quaternion(inputs["r_i_bp"][0], inputs["r_i_bp"][1])
-  n = quaternion_rotation([0, inputs["r_bp_b"][0]], q_i)[1] # Inertial representation of principal body - to - body rotation axis
-  q_b = axis_angle_to_quaternion(n, inputs["r_bp_b"][1])
-  q_ib = quaternion_product(p=q_b, q=q_i, normalize=True) # Represents the initial inertial rotation from I to B.
-                                                          # The coordinate transoformation would use the inverse.
+  q_i = axis_angle_to_quaternion(-inputs["r_i_bp"][0], inputs["r_i_bp"][1])
+  q_b = axis_angle_to_quaternion(-inputs["r_bp_b"][0], inputs["r_bp_b"][1])
+  # Represents the coordinate transformation we would apply to represent a vector from I in B, initially.
+  q_ib = quaternion_product(p=q_b, q=q_i, normalize=True)
 
   # Adaptive integration of the equations of motion in the body frame for free body rotation under zero torque
   def ddt_wb(w, t):
@@ -88,20 +83,21 @@ def simulate(inputs):
   # Collect outputs so far!
   outputs = {}
   outputs["m_i"] = inputs["m_i"]
+  outputs["a_i"] = inputs["a_i"]
   outputs["t_s"] = time_s
   outputs["w_b"] = w_b
 
   # Compute the time series of:
-  # - the quaternion representing rotation of the body frame relative to the standard inertial frame
-  # - the magnetic field as seen from the body frame
-  outputs["q_i"] = [q_ib]
-  outputs["m_b"] = [quaternion_rotation([0, inputs["m_i"]], quaternion_inverse(q_ib))[1]]
+  # - ground truth coordinate transformation
+  # - the magnetic, gravitational fields as seen from the body frame
+  outputs["q_b"] = [quaternion_inverse(q_ib)]
+  outputs["m_b"] = [quaternion_rotation([0, inputs["m_i"]], q_ib)[1]]
+  outputs["a_b"] = [quaternion_rotation([0, inputs["a_i"]], q_ib)[1]]
   for idx in xrange(len(w_b)-1):
-    q_wi = quaternion_rotation([0, w_b[idx]], outputs["q_i"][-1])
-    w_i = q_wi[1] # Take the vector part
-
-    outputs["q_i"].append(quaternion_product(w_dt_to_quaternion(w_i, dt), outputs["q_i"][-1], True))
-    outputs["m_b"].append(quaternion_rotation([0, inputs["m_i"]], quaternion_inverse(outputs["q_i"][-1]))[1])
+    q_ib = quaternion_product(p=w_dt_to_quaternion(-w_b[idx], dt), q=q_ib, normalize=True)
+    outputs["q_b"].append(quaternion_inverse(q_ib))
+    outputs["m_b"].append(quaternion_rotation([0, inputs["m_i"]], q_ib)[1])
+    outputs["a_b"].append(quaternion_rotation([0, inputs["a_i"]], q_ib)[1])
 
   return outputs
 
@@ -120,13 +116,14 @@ def check_principal(axis):
     inputs["w_bp"] = 2*np.pi*np.asarray([0,0,1]) # 1 Hz CCW rotation about the body z-axis is a 1 Hz CCW rotation about the inertial z axis.
   inputs["f_s"] = 100.0 # Hz
   inputs["t_f"] = 1.0 # seconds
-  inputs["m_i"] = np.asarray([0,0,1]) # Normalized magnetic field points straight up when the body is aligned with the inertial frame.
+  inputs["m_i"] = np.asarray([1.0/2, 0, np.sqrt(3)/2])  # Normalized magnetic field points in x,z directions when the body is aligned with the inertial frame.
+  inputs["a_i"] = np.asarray([0,     0, 1])             # Normalized gravitational field points straight up when the body is aligned with the inertial frame.
 
   outputs = simulate(inputs)
 
   # Check: Animate it. Orientations look right? Rotating about chosen inertial axis CCW (+)?
   # Status: Pass.
-  e0, e1, e2 = generate_body_frames(outputs["q_i"])
+  e0, e1, e2 = generate_body_frames(outputs["q_b"])
   N_frames = len(outputs["t_s"])
   animate(N_frames, e0, e1, e2, 5)
 
@@ -139,13 +136,14 @@ def check_misalignment():
   inputs["w_bp"] = 2*np.pi*np.asarray([0,0,1]) # 1 Hz CCW rotation about the principal body z-axis, initially.
   inputs["f_s"] = 100.0 # Hz
   inputs["t_f"] = 1.0 # seconds
-  inputs["m_i"] = np.asarray([0,0,1]) # Normalized magnetic field points straight up when the body is aligned with the inertial frame.
+  inputs["m_i"] = np.asarray([1.0/2, 0, np.sqrt(3)/2])  # Normalized magnetic field points in x,z directions when the body is aligned with the inertial frame.
+  inputs["a_i"] = np.asarray([0,     0, 1])             # Normalized gravitational field points straight up when the body is aligned with the inertial frame.
 
   outputs = simulate(inputs)
 
   # Check: Animate it. Initial orientation looks right?
   # Status: Pass.
-  e0, e1, e2 = generate_body_frames(outputs["q_i"])
+  e0, e1, e2 = generate_body_frames(outputs["q_b"])
   N_frames = len(outputs["t_s"])
   animate(N_frames, e0, e1, e2, 100)
 
@@ -160,16 +158,17 @@ def check_precession():
   inputs["J_bp"][2,2] = 3
   inputs["w_bp"] = 2*np.pi*np.asarray([0,0,1]) # 1 Hz CCW rotation about the principal body z-axis, initially.
   inputs["f_s"] = 800.0 # Hz
-  inputs["t_f"] = 5.0 # seconds
-  inputs["m_i"] = np.asarray([0,0,1]) # Normalized magnetic field points straight up when the body is aligned with the inertial frame.
+  inputs["t_f"] = 1.0 # seconds
+  inputs["m_i"] = np.asarray([1.0/2, 0, np.sqrt(3)/2])  # Normalized magnetic field points in x,z directions when the body is aligned with the inertial frame.
+  inputs["a_i"] = np.asarray([0,     0, 1])             # Normalized gravitational field points straight up when the body is aligned with the inertial frame.
 
   outputs = simulate(inputs)
 
   # Check: Animate it. Does it look reasonable?
   # Status: Pass.
-  e0, e1, e2 = generate_body_frames(outputs["q_i"])
+  e0, e1, e2 = generate_body_frames(outputs["q_b"])
   N_frames = len(outputs["t_s"])
-  animate(N_frames, e0, e1, e2, 80)
+  animate(N_frames, e0, e1, e2, 4)
 
 if __name__ == "__main__":
   # Run some sanity checks!
