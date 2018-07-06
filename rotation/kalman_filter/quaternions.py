@@ -77,3 +77,8 @@ def quaternion_inverse(q):
 # @return The quaternion product qr qv qr^-1, a 'pure vector'
 def quaternion_rotation(qv,qr):
   return quaternion_product(quaternion_product(qr,qv, False), quaternion_inverse(qr), False)
+
+def quaternion_times_scalar(scalar, quaternion):
+  result_scalar = scalar * quaternion[0]
+  result_vector = quaternion[1] * scalar
+  return [result_scalar, result_vector]
