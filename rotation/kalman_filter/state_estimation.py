@@ -104,8 +104,8 @@ def naive(hpf):
 
 
     new_part = mu * grad_f / vector_norm(grad_f)
-    hohoho = np.array([new_part[1], new_part[2], new_part[3]])
-    q = [r_i[-1][0] - new_part[0], r_i[-1][1] - hohoho] 
+    hehehe = np.array([new_part[1], new_part[2], new_part[3]])
+    q = [r_i[-1][0] - new_part[0], r_i[-1][1] - hehehe] 
 
     r_i.append(q)
 
