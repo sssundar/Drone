@@ -1,0 +1,5 @@
+Sanity Checks --
+  
+Zero rotation. Converges.
+1-Axis Rotation. Converges for x,y but not z.
+  Why? A bug!!
