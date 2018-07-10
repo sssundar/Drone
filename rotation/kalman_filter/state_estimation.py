@@ -74,8 +74,8 @@ def gradient_f(q, a, b, m):
 def naive():
   # Simulate a simple two-axis rotation.
   inputs = {}
-  inputs["r_i_bp"] = [np.asarray([1,0,0]), np.pi/10] # Principal body frame is initially rotated 18 degrees about the inertial x axis.
-  inputs["r_bp_b"] = [np.asarray([0,1,0]), np.pi/4] # Actual body frame is rotated 45 degrees about the principal y axis
+  inputs["r_i_bp"] = [np.asarray([0,0,1]), np.pi/10] # Principal body frame is initially rotated 18 degrees about the inertial x axis.
+  inputs["r_bp_b"] = [np.asarray([0,1,0]), 0] # Actual body frame is rotated 45 degrees about the principal y axis
   inputs["J_bp"] = (1.0/6) * 0.05 * np.eye(3) # A uniform cubic 50g mass of length 1 m has J = M/6 I where M is the total mass.
   inputs["w_bp"] = 2*np.pi*np.asarray([0,0,0]) # 0 Hz CCW rotation about the principal body z-axis, initially.
   inputs["f_s"] = 100.0 # Hz
@@ -93,7 +93,7 @@ def naive():
   N = len(sensor_stream["t_s"])
   for idx in xrange(N-1):
     dt = sensor_stream["t_s"][idx+1]-sensor_stream["t_s"][idx]
-    q_dot = quaternion_times_scalar(scalar=.5, quaternion=quaternion_product(r_i[-1], (0, sensor_stream["w_b"][idx]), False))
+    q_dot = quaternion_times_scalar(scalar=.5, quaternion=quaternion_product(r_i[-1], [0, sensor_stream["w_b"][idx]], False))
     # Gradient descent should converge AT LEAST as fast as physical rotation
     # but should not stop if the object stops rotating...
     mu = alpha * (quaternion_norm(q_dot) + 0.01) * dt
@@ -104,12 +104,15 @@ def naive():
     # print r_i[-1]
     # print vector_norm(grad_f)
 
+    if vector_norm(grad_f) > 1E-9:
+      new_part = mu * grad_f / vector_norm(grad_f)
+    else:
+      new_part = [0,0,0,0]
 
-    new_part = mu * grad_f / vector_norm(grad_f)
     hehehe = np.array([new_part[1], new_part[2], new_part[3]])
     q = [r_i[-1][0] - new_part[0], r_i[-1][1] - hehehe]
 
-    r_i.append(q)
+    r_i.append([e / quaternion_norm(q)  for e in q])
 
 
   #################
