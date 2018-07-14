@@ -82,15 +82,15 @@ def naive():
   inputs["r_i_bp"] = [np.asarray([0,0,1]), np.pi/10] # Principal body frame is initially rotated 18 degrees about the inertial x axis.
   inputs["r_bp_b"] = [np.asarray([0,1,0]), np.pi/4] # Actual body frame is rotated 45 degrees about the principal y axis
   inputs["J_bp"] = (1.0/6) * 0.05 * np.eye(3) # A uniform cubic 50g mass of length 1 m has J = M/6 I where M is the total mass.
-  inputs["w_bp"] = 2*np.pi*np.asarray([0,0,1]) # 0 Hz CCW rotation about the principal body z-axis, initially.
+  inputs["w_bp"] = 2*np.pi*np.asarray([0,0,0.1]) # 0 Hz CCW rotation about the principal body z-axis, initially.
   inputs["f_s"] = 100.0 # Hz
-  inputs["t_f"] = 1.0 # seconds
+  inputs["t_f"] = 5.0 # seconds
   # Normalized magnetic field points in X/Z-direction when the body is aligned with the inertial frame.
   # This was a crucial part of the derivation/simplification.
   inputs["m_i"] = np.asarray([0.5,0,np.sqrt(3)/2])
   inputs["a_i"] = np.asarray([0,0,1]) # Normalized gravitational field points straight up when the body is aligned with the inertial frame.
 
-  alpha = 100
+  alpha = 5
 
   outputs = simulate(inputs)
   sensor_stream = outputs         # TODO Do not yet apply realism (bias, noise, time jitter, ...)
