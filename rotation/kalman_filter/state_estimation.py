@@ -82,15 +82,13 @@ def naive():
   inputs["r_i_bp"] = [np.asarray([0,0,1]), np.pi/10] # Principal body frame is initially rotated 18 degrees about the inertial x axis.
   inputs["r_bp_b"] = [np.asarray([0,1,0]), np.pi/4] # Actual body frame is rotated 45 degrees about the principal y axis
   inputs["J_bp"] = (1.0/6) * 0.05 * np.eye(3) # A uniform cubic 50g mass of length 1 m has J = M/6 I where M is the total mass.
-  inputs["w_bp"] = 2*np.pi*np.asarray([0,0,0.1]) # 0 Hz CCW rotation about the principal body z-axis, initially.
+  inputs["w_bp"] = 2*np.pi*np.asarray([0,0,2]) # 2 Hz CCW rotation about the principal body z-axis, initially.
   inputs["f_s"] = 100.0 # Hz
-  inputs["t_f"] = 5.0 # seconds
+  inputs["t_f"] = 3.0 # seconds
   # Normalized magnetic field points in X/Z-direction when the body is aligned with the inertial frame.
   # This was a crucial part of the derivation/simplification.
   inputs["m_i"] = np.asarray([0.5,0,np.sqrt(3)/2])
   inputs["a_i"] = np.asarray([0,0,1]) # Normalized gravitational field points straight up when the body is aligned with the inertial frame.
-
-  alpha = 5
 
   outputs = simulate(inputs)
   sensor_stream = outputs         # TODO Do not yet apply realism (bias, noise, time jitter, ...)
@@ -101,23 +99,20 @@ def naive():
   for idx in xrange(N-1):
     dt = sensor_stream["t_s"][idx+1]-sensor_stream["t_s"][idx]
     q_dot = quaternion_times_scalar(scalar=.5, quaternion=quaternion_product(r_i[-1], [0, sensor_stream["w_b"][idx]], False))
-    # Gradient descent should converge AT LEAST as fast as physical rotation
-    # but should not stop if the object stops rotating...
-    mu = alpha * (quaternion_norm(q_dot) + 0.01) * dt
-
     grad_f = gradient_f(r_i[-1], sensor_stream["a_b"][idx], sensor_stream["m_i"], sensor_stream["m_b"][idx]) #q, a, b, m
 
-    # print grad_f
-    # print r_i[-1]
-    # print vector_norm(grad_f)
+    # Our only noise, currently, is numerical error of about 10 degrees per second
+    beta = np.pi/2
 
     if vector_norm(grad_f) > 1E-9:
-      new_part = mu * grad_f / vector_norm(grad_f)
+      new_part = beta * grad_f / vector_norm(grad_f)
     else:
       new_part = [0,0,0,0]
 
-    hehehe = np.array([new_part[1], new_part[2], new_part[3]])
-    q = [r_i[-1][0] - new_part[0], r_i[-1][1] - hehehe]
+    dq = [new_part[0], np.array([new_part[1], new_part[2], new_part[3]])]
+    dq = [q_dot[0] - dq[0], q_dot[1] - dq[1]]
+    dq = [dq[0]*dt, dq[1]*dt]
+    q = [r_i[-1][0] + dq[0], r_i[-1][1] + dq[1]]
 
     r_i.append([e / quaternion_norm(q)  for e in q])
 
