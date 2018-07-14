@@ -13,26 +13,31 @@ import pdb
 def f_g(q, a):
   r, v = q
   q = [r] + list(v)
-  line1 = 2*(q[1] * q[3] - q[0] * q[2]) - a[0]
-  line2 = 2*(q[0] * q[1] + q[2] * q[3]) - a[1]
-  line3 = 2*(0.5 - q[1]**2 - q[2]**2) - a[2]
+  q1, q2, q3, q4 = q
+  ax, ay, az = list(a)
+  line1 = 2*(q2*q4 - q1*q3) - ax
+  line2 = 2*(q1*q2 + q3*q4) - ay
+  line3 = 2*(0.5 - q2**2 - q3**2) - az
   return np.array([line1, line2, line3])
 
 def J_g(q):
   r, v = q
   q = [r] + list(v)
-  line1 = [-2*q[2], 2*q[3], -2*q[0], 2*q[1]]
-  line2 = [2*q[1], 2*q[0], 2*q[3], 2*q[2]]
-  line3 = [0, -4*q[1], -4*q[2], 0]
+  q1, q2, q3, q4 = q
+  line1 = [-2*q3, 2*q4, -2*q1, 2*q2]
+  line2 = [2*q2, 2*q1, 2*q4, 2*q3]
+  line3 = [0, -4*q2, -4*q3, 0]
   return np.matrix([line1, line2, line3])
 
 def f_b(q, b, m):
   r, v = q
   q = [r] + list(v)
-  b = [0] + list(b)
-  line1 = 2*b[1]*(0.5 - q[2]**2 - q[3]**2) + 2*b[3]*(q[1] * q[3] - q[0]* q[2]) - m[0]
-  line2 = 2 * b[1] *( q[1] * q[2] - q[0] * q[3]) + 2 * b[3] * ( q[0] * q[1] + q[2] * q[3]) - m[1]
-  line3 = 2 * b[1] *(q[0] * q[2] + q[1] * q[3]) + b[3]*(0.5 - q[1]**2 - q[2]**2) - m[2]
+  q1, q2, q3, q4 = q
+  bx, _, bz = list(b)
+  mx, my, mz = list(m)
+  line1 = 2*bx*(0.5 - q3**2 - q4**2) + 2*bz*(q2*q4 - q1*q3) - mx
+  line2 = 2*bx*(q2*q3 - q1*q4) + 2*bz*(q1*q2 + q3*q4) - my
+  line3 = 2*bx*(q1*q3 + q2*q4) + 2*bz*(0.5 - q2**2 - q3**2) - mz
   return np.array([line1, line2, line3])
 
 def J_b(q, b):
@@ -41,9 +46,9 @@ def J_b(q, b):
   q1, q2, q3, q4 = q
   bx, _, bz = b
 
-  line1 = [-2*bz*q3, 2*bz*q4, -4*bx*q3 - 2*bz*q1, -4*bx*q4+2*bz*q2]
-  line2 = [-2*bx*q4+2*bz*q2, 2*bx*q3+2*bz*q1, 2*bx*q2+2*bz*q4, -2*bx*q1+2*bz*q3]
-  line3 = [2*bx*q3 , 2*bx*q4-4*bz*q2, 2*bx*q1 - 4*bz*q3, 2*bx*q2]
+  line1 = [-2*bz*q3, 2*bz*q4, -4*bx*q3 - 2*bz*q1, -4*bx*q4 + 2*bz*q2]
+  line2 = [-2*bx*q4 + 2*bz*q2, 2*bx*q3 + 2*bz*q1, 2*bx*q2 + 2*bz*q4, -2*bx*q1 + 2*bz*q3]
+  line3 = [2*bx*q3 , 2*bx*q4 - 4*bz*q2, 2*bx*q1 - 4*bz*q3, 2*bx*q2]
 
   return np.matrix([line1, line2, line3])
 
@@ -59,7 +64,7 @@ def J_gb(q, b):
   # pdb.set_trace()
   # print J_b(q, b)
   # return np.matrix([J_g(q); J_b(q, b)])
-  return np.concatenate(((J_g(q)), (J_b(q, b))), axis=0)
+  return np.concatenate((J_g(q), J_b(q, b)), axis=0)
 
 def gradient_f(q, a, b, m):
   # print np.transpose(J_gb(q, b))
@@ -75,20 +80,22 @@ def naive():
   # Simulate a simple two-axis rotation.
   inputs = {}
   inputs["r_i_bp"] = [np.asarray([0,0,1]), np.pi/10] # Principal body frame is initially rotated 18 degrees about the inertial x axis.
-  inputs["r_bp_b"] = [np.asarray([0,1,0]), 0] # Actual body frame is rotated 45 degrees about the principal y axis
+  inputs["r_bp_b"] = [np.asarray([0,1,0]), np.pi/4] # Actual body frame is rotated 45 degrees about the principal y axis
   inputs["J_bp"] = (1.0/6) * 0.05 * np.eye(3) # A uniform cubic 50g mass of length 1 m has J = M/6 I where M is the total mass.
-  inputs["w_bp"] = 2*np.pi*np.asarray([0,0,0]) # 0 Hz CCW rotation about the principal body z-axis, initially.
+  inputs["w_bp"] = 2*np.pi*np.asarray([0,0,1]) # 0 Hz CCW rotation about the principal body z-axis, initially.
   inputs["f_s"] = 100.0 # Hz
   inputs["t_f"] = 1.0 # seconds
-  inputs["m_i"] = np.asarray([0,1,0]) # Normalized magnetic field points in Y-direction when the body is aligned with the inertial frame.
+  # Normalized magnetic field points in X/Z-direction when the body is aligned with the inertial frame.
+  # This was a crucial part of the derivation/simplification.
+  inputs["m_i"] = np.asarray([0.5,0,np.sqrt(3)/2])
   inputs["a_i"] = np.asarray([0,0,1]) # Normalized gravitational field points straight up when the body is aligned with the inertial frame.
 
-  alpha = 50
+  alpha = 100
 
   outputs = simulate(inputs)
   sensor_stream = outputs         # TODO Do not yet apply realism (bias, noise, time jitter, ...)
 
-  r_i = [[1,np.asarray([0,0,0])]] # Our initial estimate of the rotation of the body frame relative to the inertial frame.
+  r_i = [[1, np.asarray([0,0,0])]] # Our initial estimate of the rotation of the body frame relative to the inertial frame.
 
   N = len(sensor_stream["t_s"])
   for idx in xrange(N-1):
@@ -120,11 +127,11 @@ def naive():
   #################
 
   e0_act, e1_act, e2_act = generate_body_frames(outputs["q_b"])
-  e0_est, e1_est, e2_est = generate_body_frames([outputs["q_b"][0]] + r_i)
+  e0_est, e1_est, e2_est = generate_body_frames(r_i)
 
   #animate(N, e0_act, e1_act, e2_act, 5, "actual_rotation")
-  animate(N, e0_est, e1_est, e2_est, 5, "estimated_rotation")
-
+  # animate(N, e0_est, e1_est, e2_est, 5, "estimated_rotation")
+  compare(N, e0_est, e1_est, e2_est, e0_act, e1_act, e2_act, 5, "estimated_rotation")
 
 if __name__ == "__main__":
   naive()

@@ -87,9 +87,9 @@ def animate(n_vectors, q_e0, q_e1, q_e2, decimator, where="images"):
 # @param[in] q_e1 The 'y' body axis, of unit norm, actual
 # @param[in] q_e2 The 'z' body axis, of unit norm, actual
 # @param[in] decimator The factor by which to decimate the time series.
-def compare(n_vectors, r_e0, r_e1, r_e2, q_e0, q_e1, q_e2, decimator):
+def compare(n_vectors, r_e0, r_e1, r_e2, q_e0, q_e1, q_e2, decimator, where="images"):
   # Wipe the images/ directory
-  clear_animation()
+  clear_animation(where)
 
   fig = plt.figure()
   ax = fig.add_subplot(111, projection='3d')
@@ -110,5 +110,5 @@ def compare(n_vectors, r_e0, r_e1, r_e2, q_e0, q_e1, q_e2, decimator):
 
     line_collections = draw_body(ax, [r_e0[n], r_e1[n], r_e2[n], q_e0[n], q_e1[n], q_e2[n]], ["c", "y", "k", "r", "g", "b"])
 
-    plt.savefig('images/Frame%08i.png' % n)
+    plt.savefig('%s/Frame%08i.png' % (where, n))
     plt.draw()
