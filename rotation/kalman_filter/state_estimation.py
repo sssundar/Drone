@@ -95,10 +95,12 @@ def naive():
 
   r_i = [[1, np.asarray([0,0,0])]] # Our initial estimate of the rotation of the body frame relative to the inertial frame.
 
+  # Bias Accumulator
+  int_we = np.asarray([0.0,0.0,0.0])
+
   N = len(sensor_stream["t_s"])
   for idx in xrange(N-1):
     dt = sensor_stream["t_s"][idx+1]-sensor_stream["t_s"][idx]
-    q_dot = quaternion_times_scalar(scalar=.5, quaternion=quaternion_product(r_i[-1], [0, sensor_stream["w_b"][idx]], False))
 
     # Without Magnetic Distortion Compensation
     # b = sensor_stream["m_i"]
@@ -113,11 +115,20 @@ def naive():
 
     # Our only noise, currently, is numerical error of about 10 degrees per second
     beta = np.pi/2
+    zeta = np.pi/20
 
     if vector_norm(grad_f) > 1E-9:
-      new_part = beta * grad_f / vector_norm(grad_f)
+      qe_dot = grad_f / vector_norm(grad_f)
+      new_part = beta * qe_dot
     else:
+      qe_dot = np.asarray([0,0,0,0])
       new_part = [0,0,0,0]
+    qe_dot = [qe_dot[0], np.asarray([qe_dot[1], qe_dot[2], qe_dot[3]])]
+
+    w_e = quaternion_times_scalar(scalar=2, quaternion=quaternion_product(quaternion_inverse(r_i[-1]), qe_dot, False))[1]
+    int_we += w_e*dt
+
+    q_dot = quaternion_times_scalar(scalar=.5, quaternion=quaternion_product(r_i[-1], [0, sensor_stream["w_b"][idx] - zeta*int_we], False))
 
     dq = [new_part[0], np.array([new_part[1], new_part[2], new_part[3]])]
     dq = [q_dot[0] - dq[0], q_dot[1] - dq[1]]

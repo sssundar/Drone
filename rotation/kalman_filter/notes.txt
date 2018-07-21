@@ -12,5 +12,9 @@ Basic Madgwick Complementary Filter --
     Converges without noise.
 
 MCF with Magnetic Distortion Compensation --
+  3D Rotation
+    Converges without noise within 40 frames at 100Hz (0.5s) then stays locked.
 
 MCF + MDC + Gyro Bias Estimation --
+  3D Rotation
+    Converges without noise within 40 frames at 100Hz (0.5s) then stays locked.
