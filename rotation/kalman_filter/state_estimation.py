@@ -99,7 +99,17 @@ def naive():
   for idx in xrange(N-1):
     dt = sensor_stream["t_s"][idx+1]-sensor_stream["t_s"][idx]
     q_dot = quaternion_times_scalar(scalar=.5, quaternion=quaternion_product(r_i[-1], [0, sensor_stream["w_b"][idx]], False))
-    grad_f = gradient_f(r_i[-1], sensor_stream["a_b"][idx], sensor_stream["m_i"], sensor_stream["m_b"][idx]) #q, a, b, m
+
+    # Without Magnetic Distortion Compensation
+    # b = sensor_stream["m_i"]
+    # m = sensor_stream["m_b"][idx]
+
+    # With Magnetic Distortion Compensation
+    m = sensor_stream["m_b"][idx]
+    b = quaternion_rotation(qv=[0,m], qr=r_i[-1])[1]
+    b = np.asarray([np.sqrt(b[0]**2 + b[1]**2), 0, b[2]])
+
+    grad_f = gradient_f(r_i[-1], sensor_stream["a_b"][idx], b, m) #q, a, b, m
 
     # Our only noise, currently, is numerical error of about 10 degrees per second
     beta = np.pi/2
@@ -125,7 +135,7 @@ def naive():
   e0_est, e1_est, e2_est = generate_body_frames(r_i)
 
   #animate(N, e0_act, e1_act, e2_act, 5, "actual_rotation")
-  # animate(N, e0_est, e1_est, e2_est, 5, "estimated_rotation")
+  #animate(N, e0_est, e1_est, e2_est, 5, "estimated_rotation")
   compare(N, e0_est, e1_est, e2_est, e0_act, e1_act, e2_act, 5, "estimated_rotation")
 
 if __name__ == "__main__":

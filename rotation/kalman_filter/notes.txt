@@ -1,12 +1,16 @@
 Sanity Checks --
 
-Zero rotation. Converges.
-1-Axis Rotation. Converges for x,y,z
-  the non-zero 'x' magnetic field requirement is crucial
-  the derivation of the simplified gradient assumes this
-  if you have a 'y' component but no 'x' then only the z matters...
-  and if you have a zero z component... it doesn't matter how you rotate there.
-  it would look like the magnetic field didn't matter.
-3D Rotation.
-  Looks like we're converging but our rotation is backwards.
-  I have a sign error somewhere.
+Basic Madgwick Complementary Filter --
+  Zero rotation. Converges.
+  1-Axis Rotation. Converges for x,y,z
+    the non-zero 'x' magnetic field requirement is crucial
+    the derivation of the simplified gradient assumes this
+    if you have a 'y' component but no 'x' then only the z matters...
+    and if you have a zero z component... it doesn't matter how you rotate there.
+    it would look like the magnetic field didn't matter.
+  3D Rotation.
+    Converges without noise.
+
+MCF with Magnetic Distortion Compensation --
+
+MCF + MDC + Gyro Bias Estimation --
