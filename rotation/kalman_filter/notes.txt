@@ -32,14 +32,25 @@ Add in gyro bias
     Converges for bias even up to the 180 dps range iid in all axes.
     Beta, Zeta BOTH need to be tuned to match the scale of spread, bias, of course.
 
+Add in zero mean compass noise
+
 Add in zero mean accel noise
 
-Add in low frequency accel oscillation
+Add in low frequency accel oscillation on the scale of gravity. Doesn't matter if it's physically relevant. The swing is the key.
+  Will need to update "a_i" = direction of gravity to "a_i" = acceleration felt by object.
 
-Add in time jitter and interpolation
+Show me inertial drift (does need to be animated) to understand the delay, error timescale and the error scale. You can update the base point of the vectors to do this.
 
-Show me inertial drift (doens't need to be animated) to understand the timescale.
+Add in time jitter, buffering delay, and interpolation error
 
-Write out a simple drone model
-Simulate it
-Add in a pid controller
+Write out a simple drone mechanics model
+Simulate it (torques in free_body input step-by-step instead as identically zero)
+Linearize the model about the horizontal. Design your PID controller.
+Simulate the PID controller.
+
+Next -- Push for first flight. KISS.
+Build!
+  Mechanical (purchase)
+  Electrical (drive, safety, 2s motors -> bom -> pcb)
+  FW (drivers, controller, logger, tools)
+

@@ -40,3 +40,9 @@ def fuzz_gyro(inputs):
     outputs["w_b"][k] = w + noise
 
   return outputs
+
+def fuzz_compass(inputs):
+  pass
+
+def fuzz_accel(inputs):
+  pass
