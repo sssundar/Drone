@@ -18,3 +18,28 @@ MCF with Magnetic Distortion Compensation --
 MCF + MDC + Gyro Bias Estimation --
   3D Rotation
     Converges without noise within 40 frames at 100Hz (0.5s) then stays locked.
+
+Add in zero mean gyro noise to the tune of 3 degrees per second per axis, iid.
+  3D Rotation
+    Converges without noise within 40 frames at 100Hz (0.5s) then stays locked.
+
+Add in zero mean gyro noise to the tune of 180 degrees per second per axis, iid.
+  3D Rotation
+    Converges but is buffetted about by noise throughout the simulation.
+
+Add in gyro bias
+  3D Rotation
+    Converges for bias even up to the 180 dps range iid in all axes.
+    Beta, Zeta BOTH need to be tuned to match the scale of spread, bias, of course.
+
+Add in zero mean accel noise
+
+Add in low frequency accel oscillation
+
+Add in time jitter and interpolation
+
+Show me inertial drift (doens't need to be animated) to understand the timescale.
+
+Write out a simple drone model
+Simulate it
+Add in a pid controller
