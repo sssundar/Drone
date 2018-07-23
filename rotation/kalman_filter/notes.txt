@@ -32,9 +32,18 @@ Add in gyro bias
     Converges for bias even up to the 180 dps range iid in all axes.
     Beta, Zeta BOTH need to be tuned to match the scale of spread, bias, of course.
 
-Add in zero mean compass noise
+Add in zero mean compass noise (10%)
+Add in zero mean accel noise (5%)
+  3D Rotation
+    MDC really helps since accel noise (for now) is < compass noise.
+    Converges for beta around pi/2. Kind of makes sense.
+    w_e error is like w_b error. w_e error makes us move further from the truth.
+    we then want to converge quickly if we get a better measurement.
 
-Add in zero mean accel noise
+Probably worth refactoring here to move us to an iterative computation model instead of an operate on whole-time-series model. To better simulate COM acceleration. May as well write the simulator now so you can put in, say, an oscillating net torque.
+
+Write out a simple drone mechanics model
+Simulate it (torques in free_body input step-by-step instead as identically zero)
 
 Add in low frequency accel oscillation on the scale of gravity. Doesn't matter if it's physically relevant. The swing is the key.
   Will need to update "a_i" = direction of gravity to "a_i" = acceleration felt by object.
@@ -43,8 +52,6 @@ Show me inertial drift (does need to be animated) to understand the delay, error
 
 Add in time jitter, buffering delay, and interpolation error
 
-Write out a simple drone mechanics model
-Simulate it (torques in free_body input step-by-step instead as identically zero)
 Linearize the model about the horizontal. Design your PID controller.
 Simulate the PID controller.
 

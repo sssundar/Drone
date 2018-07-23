@@ -85,7 +85,7 @@ def naive():
   inputs["J_bp"] = (1.0/6) * 0.05 * np.eye(3) # A uniform cubic 50g mass of length 1 m has J = M/6 I where M is the total mass.
   inputs["w_bp"] = 2*np.pi*np.asarray([0,0,2]) # 2 Hz CCW rotation about the principal body z-axis, initially.
   inputs["f_s"] = 100.0 # Hz
-  inputs["t_f"] = 5.0 # seconds
+  inputs["t_f"] = 3.0 # seconds
   # Normalized magnetic field points in X/Z-direction when the body is aligned with the inertial frame.
   # Normalized gravitational field points straight up when the body is aligned with the inertial frame.
   # These were a crucial part of the derivation/simplification.
@@ -93,7 +93,7 @@ def naive():
   inputs["a_i"] = np.asarray([0,0,1])
 
   outputs = simulate(inputs)
-  sensor_stream = fuzz_gyro(outputs)
+  sensor_stream = fuzz_accel(fuzz_compass(fuzz_gyro(outputs)))
 
   r_i = [[1, np.asarray([0,0,0])]] # Our initial estimate of the rotation of the body frame relative to the inertial frame.
 
@@ -119,7 +119,7 @@ def naive():
     # Note zeta cannot compensate for beta.
     # Note beta can compensate for bias if it is large enough.
     #   Then... you'll jitter if there's mag/acc noise. You don't want to make beta unnecessarily large.
-    beta = np.pi/10   # ~18 dps spread iid in all axes. If this is zero we're just integrating without any orientation compensation
+    beta = np.pi/2   # ~18 dps spread iid in all axes. If this is zero we're just integrating without any orientation compensation
     zeta = np.pi/3    # ~60 dps bias error iid in all axes. If this is zero we don't use gyro bias compensation.
 
     if vector_norm(grad_f) > 1E-9:

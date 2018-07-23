@@ -2,7 +2,8 @@
 # For instance, adding bias, noise, time jitter, or sensor streams with differing sampling rates.
 
 import numpy as np
-import sys
+import sys, copy
+from quaternions import *
 
 # @param[in] inputs, a dictionary with the following fields:
 #             - m_i: a numpy 3-vector. unitless.
@@ -29,7 +30,7 @@ import sys
 #             - m_b: a list of numpy 3-vectors [unit norm, unitless] representing realistic samples of the direction of the Earth's magnetic field from a 3D compass coincident with the body frame
 #             - a_b: a list of numpy 3-vectors [unit norm, unitless] representing realistic samples of the direction of the Earth's gravitational field from a 3D accelerometer coincident with the body frame
 def fuzz_gyro(inputs):
-  outputs = inputs
+  outputs = copy.deepcopy(inputs)
 
   sigma = np.eye(3) * ((np.pi/18)**2)     # 10 dps iid noise (appropriate for our beta)
   mu = np.zeros([1,3])[0]
@@ -42,7 +43,27 @@ def fuzz_gyro(inputs):
   return outputs
 
 def fuzz_compass(inputs):
-  pass
+  outputs = copy.deepcopy(inputs)
+
+  sigma = np.eye(3) * (0.1**2)     # 30% iid noise
+  mu = np.zeros([1,3])[0]
+  mu += 0                          # Compass bias is assumed 0 ATM. Would lead to heading error.
+  for k in xrange(len(outputs["m_b"])):
+    noise = np.random.multivariate_normal(mean=mu, cov=sigma)
+    outputs["m_b"][k] += noise
+    outputs["m_b"][k] /= vector_norm(outputs["m_b"][k])
+
+  return outputs
 
 def fuzz_accel(inputs):
-  pass
+  outputs = copy.deepcopy(inputs)
+
+  sigma = np.eye(3) * (0.05**2)     # 10% iid noise
+  mu = np.zeros([1,3])[0]
+  mu += 0                          # Accel bias is assumed 0 ATM. Would lead to heading error.
+  for k in xrange(len(outputs["a_b"])):
+    noise = np.random.multivariate_normal(mean=mu, cov=sigma)
+    outputs["a_b"][k] += noise
+    outputs["a_b"][k] /= vector_norm(outputs["a_b"][k])
+
+  return outputs
