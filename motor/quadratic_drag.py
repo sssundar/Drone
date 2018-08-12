@@ -21,7 +21,7 @@ def w_ss(d, cw, gamma, beta_m, beta_d):
   else:
     return ((d*beta_m)/(2*beta_d)) * (1 - np.sqrt(1 + ((4*beta_d*gamma)/(beta_m*beta_m*d))))
 
-def sim(d, cw=True):
+def sim(d, cw=True, thrust=False):
   Mps = 2.0/1000  # kg
   Rps = 2.54/100  # meters
   Mpp = 0.25/1000 # kg
@@ -43,6 +43,9 @@ def sim(d, cw=True):
   Bm /= Jprop
   Bd /= Jprop
 
+  THRUST_MAX = 0.04 #kg
+  Bt = THRUST_MAX/(w_max**2)
+
   def dwdt(w, t):
     if cw:
       return d*Gamma_int_max - d*Bm*w - Bd*(w**2)
@@ -56,16 +59,31 @@ def sim(d, cw=True):
   w0 = w_ss(0, cw, Gamma_int_max, Bm, Bd)
   w = odeint(dwdt, w0, t = time_s)
   ws = w_ss(d, cw, Gamma_int_max, Bm, Bd) * np.ones(len(time_s))
-  plt.plot(time_s, w, "k-")
-  plt.plot(time_s, ws, 'r--')
+
+  if not thrust:
+    plt.plot(time_s, w, "k-")
+    plt.plot(time_s, ws, 'r--')
+  else:
+    plt.plot(time_s, Bt*w*w, 'k-')
 
 if __name__ == "__main__":
-  ds = np.linspace(0,1,10)
-  for d in ds:
-    sim(d)
-  plt.xlabel("Time (s)")
-  plt.ylabel("w (rad/s)")
-  plt.title("Propellor Frequency for a DC Brushed Motor\nVarying PWM Duty Cycle with Linear Torque, Quadratic Drag\nGm ~ w_max^2 Bd; Bm ~ 10 Bd; Bd ~ Jp/120\nyield a t~100ms timescale for d varying in [0.1,1]")
-  plt.show()
+  thrust = True
+  cw = False
+  if not thrust:
+    ds = np.linspace(0,1,10)
+    for d in ds:
+      sim(d, cw, thrust)
+    plt.xlabel("Time (s)")
+    plt.ylabel("w (rad/s)")
+    plt.title("Propellor Frequency for a DC Brushed Motor\nVarying PWM Duty Cycle with Linear Torque, Quadratic Drag\nGm ~ w_max^2 Bd; Bm ~ 10 Bd; Bd ~ Jp/120\nyield a t~100ms timescale for d varying in [0.1,1]")
+    plt.show()
+  else:
+    ds = np.linspace(0,1,10)
+    for d in ds:
+      sim(d, cw, thrust)
+    plt.xlabel("Time (s)")
+    plt.ylabel("Thrust (kg)")
+    plt.title("Thrust from a DC Brushed Motor\n")
+    plt.show()
 
 
