@@ -1,36 +1,26 @@
-# Solves for the steady state of a linear torque, quadratic drag model of our DC brushed motor.
-# We know thrust is proportional to w^2 and we want to see if duty cycle is proportional to thrust.
-# as we've measured, at steady state.
+# Solves for the dynamics if a linear torque, quadratic drag model of our DC brushed motor.
+# See notes from 8/4/2018-8/12/2018. We're trying to find the relations between Bd, Bm, Gamma, nd Jprop
+# that give us linear relations between thrust and the duty cycle, which was measured,
+# and which match a mechanical timescale of 100ms for the propellors, which was measured.
 
-# See notes from 8/6/2018-8/8/2018.
+# Note, this is a non-linear system whose timescale depends linearly on the starting duty cycle and angular velocity.
+# That means if we can find a range of d from w=0 with response timescales of ~100ms, any steps within that domain will also
+# respond within 100ms.
+
 import sys
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.integrate import odeint
 
-def w_ss(d, cw=True):
+def w_ss(d, cw, gamma, beta_m, beta_d):
   if d < 1E-9:
     return 0
 
-  tm = 1
-  km = 0.001
-  kd = 0.0001
   if cw:
-    return ((d*km)/(2*kd)) * (-1 + np.sqrt(1 + ((4*kd*tm)/(km*km*d))))
+    return ((d*beta_m)/(2*beta_d)) * (-1 + np.sqrt(1 + ((4*beta_d*gamma)/(beta_m*beta_m*d))))
   else:
-    return ((d*km)/(2*kd)) * (1 - np.sqrt(1 + ((4*kd*tm)/(km*km*d))))
+    return ((d*beta_m)/(2*beta_d)) * (1 - np.sqrt(1 + ((4*beta_d*gamma)/(beta_m*beta_m*d))))
 
-def fit():
-  d = np.linspace(0, 1, 100)
-  w = [w_ss(duty) for duty in d]
-  kfit = 95
-  fit = kfit * np.sqrt(d)
-  plt.plot(d, w, 'r-')
-  plt.plot(d, fit, 'b-')
-  plt.show()
-
-# See notes from 8/8/2018-8/10/2018. We're trying to fit Bd to match a mechanical timescale of 100ms for the propellors.
-# Simulating d=0 (s.s., w=0) step up to d.
 def sim(d, cw=True):
   Mps = 2.0/1000  # kg
   Rps = 2.54/100  # meters
@@ -40,25 +30,42 @@ def sim(d, cw=True):
   Jprop = 0.5*Mps*(Rps**2)
   Jprop += 0.1*Mpp*(9*(lpp**2) + 4*(wpp**2))
 
-  Bd = 0.0001 # Free Parameter
   RPM_max = 12000
+  w_max = (2*np.pi*RPM_max)/60
+  w_max *= 1 if cw else -1
+
+  # Matching w_max and t_mech ~ 0.1s
+  Bd = Jprop/120
   Bm = 10*Bd
-  Gamma_int_max = (((2*np.pi*RPM_max)/60)**2)*Bd
+  Gamma_int_max = (w_max**2)*Bd
 
   Gamma_int_max /= Jprop
   Bm /= Jprop
   Bd /= Jprop
 
   def dwdt(w, t):
-    # TODO Add effect of d != 1, cw
-    return Gamma_int_max - Bm*w - Bd*(w**2)
+    if cw:
+      return d*Gamma_int_max - d*Bm*w - Bd*(w**2)
+    else:
+      return -d*Gamma_int_max - d*Bm*w + Bd*(w**2)
 
-  time_s = np.linspace(0, 1, 100)
-  w = odeint(dwdt, 0, t = time_s)
+  tf = 0.3 #s which we would like to be three exponential timescales
+  N = 100
+  time_s = np.linspace(0, tf, N)
 
-  plt.plot(time_s, w)
-  plt.show()
+  w0 = w_ss(0, cw, Gamma_int_max, Bm, Bd)
+  w = odeint(dwdt, w0, t = time_s)
+  ws = w_ss(d, cw, Gamma_int_max, Bm, Bd) * np.ones(len(time_s))
+  plt.plot(time_s, w, "k-")
+  plt.plot(time_s, ws, 'r--')
 
 if __name__ == "__main__":
-  sim(1)
+  ds = np.linspace(0,1,10)
+  for d in ds:
+    sim(d)
+  plt.xlabel("Time (s)")
+  plt.ylabel("w (rad/s)")
+  plt.title("Propellor Frequency for a DC Brushed Motor\nVarying PWM Duty Cycle with Linear Torque, Quadratic Drag\nGm ~ w_max^2 Bd; Bm ~ 10 Bd; Bd ~ Jp/120\nyield a t~100ms timescale for d varying in [0.1,1]")
+  plt.show()
+
 
