@@ -82,7 +82,7 @@ if __name__ == "__main__":
     for d in ds:
       sim(d, cw, thrust)
     plt.xlabel("Time (s)")
-    plt.ylabel("Thrust (kg)")
+    plt.ylabel("Thrust (N)")
     plt.title("Thrust from a DC Brushed Motor\n")
     plt.show()
 
