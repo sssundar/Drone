@@ -43,7 +43,7 @@ def sim(d, cw=True, thrust=False):
   Bm /= Jprop
   Bd /= Jprop
 
-  THRUST_MAX = 0.04 #kg
+  THRUST_MAX = 0.04 * 9.8 # kg * m/s^2 = Newtons
   Bt = THRUST_MAX/(w_max**2)
 
   def dwdt(w, t):
