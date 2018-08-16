@@ -9,6 +9,18 @@ class Plant(object):
   #
   # @brief      Initializes a horizontal quad oriented with the Earth's magnetic
   #             field, motors halted.
+  #               - Accounts for gyroscopic effects from the propellors
+  #               - Accounts for IMU-frame vs. body-frame mismatch
+  #               - Accounts for motor drive asymmetry
+  #
+  #               - Assertion (1a): a rigid rectangular symmetric chassis.
+  #               - Assertion (1b): a rigid propellor-shaft system fixed in the quad z axis.
+  #               - Assertion (2): negligible chassis air resistance.
+  #               - Measurement (3a): linear duty-cycle to thrust relation for small DC brushed motors.
+  #               - Assertion (3b): quadratic w to thrust relation by a momentum transfer accounting
+  #               - Assertion (3c): quadratic w to drag torque relation
+  #               - Assertion (3d): very weak drag torque relative to peak motor torque
+  #               - Measurement (4): Electrical timescales <<< Mechanical timescales (winding inductance, for instance).
   #
   # @param[in]  self  A Plant object
   # @param[in]  dt    the time-step to simulate, in seconds
@@ -47,57 +59,89 @@ class Plant(object):
     # Time Configuration
     self.dt = dt
 
-    # Mass|Length Configuration
+    # Chassis Mechanical Configuration
     self.config = {}
-    self.config["l_chassis"] = # Length of chassis in meters
-    self.config["w_chassis"] = # Width of chassis in meters
-    self.config["h_chassis"] = # Height of chassis in meters
-    self.config["m_chassis"] = # Mass of chassis in kg
-    self.config["r_shaft"] = # Radius of the propellor shaft in meters
-    self.config["m_shaft"] = # Mass of the propellor shaft in kg
-    self.config["l_blade"] = # Length of propellor blade in meters
-    self.config["w_blade"] = # Width of propellor blade in meters
-    self.config["m_blade"] = # Mass of propellor blade in kg
-    self.config["m_prop"] = # Mass of propellor-shaft system in kg
-    self.config["R_prop"] = {} # Quad-frame vector (m) to CM of propellor-shaft system.
+    self.config["l_chassis"] = 0.05 # Length of chassis in meters
+    self.config["w_chassis"] = 0.05 # Width of chassis in meters
+    self.config["h_chassis"] = 0.01 # Height of chassis in meters
+    self.config["m_chassis"] = 0.08 # Mass of chassis in kg
+    self.config["R_prop"] = { "m1p2m3" : 0.5*np.asarray([-self.config["l_chassis"], self.config["w_chassis"], self.config["h_chassis"]]),
+                              "p1p2p3" : 0.5*np.asarray([self.config["l_chassis"], self.config["w_chassis"], self.config["h_chassis"]]),
+                              "p1m2m3" : 0.5*np.asarray([self.config["l_chassis"], -self.config["w_chassis"], self.config["h_chassis"]]),
+                              "m1m2p3" : 0.5*np.asarray([-self.config["l_chassis"], -self.config["w_chassis"], self.config["h_chassis"]])
+                              } # Quad-frame vector (m) to CM of propellor-shaft system.
 
-    # Moments of Inertia
-    self.config["J_prop"] = # Principal moment (kg m^2) about e3 axis of propellor-shaft system (symmetric across motors)
-    self.config["J_chassis"] = # Moment of inertia tensor (kg m^2) for chassis + propellor-shaft CM. Diagonal by assumption (1).
+    self.config["r_shaft"] = 0.0025 # Radius of the propellor shaft in meters
+    self.config["m_shaft"] = 0.002 # Mass of the propellor shaft in kg
+    self.config["l_blade"] = 0.0254 # Length of propellor blade in meters
+    self.config["w_blade"] = 0.005 # Width of propellor blade in meters
+    self.config["m_blade"] = 0.00025 # Mass of propellor blade in kg
+    self.config["m_prop"] = 2*self.config["m_blade"] + self.config["m_shaft"] # Mass of propellor-shaft system in kg
 
-    # Drive Configuration
-    self.config["Max RPM"] = {}   # in rotations per minute
-    self.config["Max Thrust"] = {} # in grams
-    self.config["B_drag"] = {} # w^2 to drag (Nm) coefficient
+    self.config["J_prop"] = 0.5*self.config["m_shaft"]*(self.config["r_shaft"]**2) # Principal moment (kg m^2) about e3 axis of propellor-shaft system (symmetric across motors)
+    self.config["J_prop"] += 0.1*self.config["m_blade"]*(9*(self.config["l_blade"]**2) + 4*(self.config["w_blade"]**2))
+
+    self.config["J_chassis"] = np.eye(3) # Moment of inertia tensor (kg m^2) for chassis + propellor-shaft CM. Diagonal by assumption (1).
+    self.config["J_chassis"][0,0] = self.config["h_chassis"]**2 + self.config["w_chassis"]**2
+    self.config["J_chassis"][1,1] = self.config["h_chassis"]**2 + self.config["l_chassis"]**2
+    self.config["J_chassis"][2,2] = self.config["l_chassis"]**2 + self.config["w_chassis"]**2
+    self.config["J_chassis"] *= ((self.config["m_chassis"]/12) + self.config["m_prop"])
+
+    # Motor Drive Configuration. See Drone/motor/quadratic_drag.py.
+    # Configured to match measurements: O(300ms) to w steady-state at duty cycles in [0.1,1].
+    # Configured to match measurements: ~40g peak thrust
+    # Configured for a 12,000 RPM limit; this was guessed and seems reasonable.
+    # These configurations ensure T_prop >>> B_motor >> B_drag, which keeps w_ss ~ duty^0.5,
+    # which satisfies the measured linear duty-thrust relationship assuming quadratic w-thrust.
+    self.config["Max RPM Base"] = 12000.0 # rotations per minute
+    self.config["Max RPM"] = {"m1p2m3" : 0.97*self.config["Max RPM Base"],
+                              "p1p2p3" : 1.03*self.config["Max RPM Base"],
+                              "p1m2m3" : 1.02*self.config["Max RPM Base"],
+                              "m1m2p3" : 0.98*self.config["Max RPM Base"],
+                              }
+    rpm_to_w = lambda rpm: (2*np.pi*rpm)/60 # rad/s
+    self.config["B_drag"] = self.config["J_prop"]/120 # w^2 to drag (Nm) coefficient
+    self.config["B_motor"] = 10*self.config["B_drag"] # w to effective EMF drive counter-torque (Nm) coefficient
     self.config["T_prop"] = {} # Maximum drive torque (Nm), by motor (asymmetry possible)
-    self.config["B_motor"] = {} # w to effective EMF drive counter-torque (Nm) coefficient
-    self.config["B_thrust"] = {} # w^2 to thrust (N) coefficient
+    for k in self.config["Max RPM"].keys():
+      self.config["T_prop"][k] = self.config["B_drag"]*(rpm_to_w(self.config["Max RPM"][k])**2)
+    self.config["B_thrust"] = (0.04*9.8)/rpm_to_w(self.config["Max RPM Base"]**2) # w^2 to thrust (N) coefficient
 
     # Field Configuration
-    self.state["G"] = # necessary?
-    self.state["H"] =
+    # Note:
+    #   At hover, there is no acceleration but the IMU will read -G (+9.8 +z) due to the test mass resting on the bottom wall.
+    #   This is equivalent to a-G with a = 0.
+    #   When accelerating upwards, the IMU will read a-G, for the same reason.
+    #   When accelerating downwards, the IMU will read a-G, for the same reason.
+    #   When in free-fall, the IMU will read 0, which is equal to a-G if a = G.
+    #   So, at all times, the IMU reads the net acceleration minus gravity (-9.8z).
+    self.config["G"] = np.asarray([0,0,-9.8]) # m/s^2
+    self.config["H"] = np.asarray([0.5,0,np.sqrt(3)/2]) # Normalized, unitless.
+
+    # IMU Misalignment Configuration
+    self.config[""] = TODO See free_body.py
 
     # State Variables
+    # We start out immobile and perfectly aligned with the space frame.
     self.state = {}
-    self.state["Omega"]
-    self.state["w"] = {}
-    self.state["q"] =
+    self.state["Omega"] = np.asarray([0,0,0]) # rad/s quad body angular velocity
+    self.state["w"] = { "m1p2m3" : 0.0,
+                        "p1p2p3" : 0.0,
+                        "p1m2m3" : 0.0,
+                        "m1m2p3" : 0.0
+                        } # rad/s propellor angular velocity
+    self.state["q"] = [1, np.asarray([0,0,0])] # quaternion ([r, v] with v a numpy 3-vector) representing quad-to-space transformation
+    self.state["R"] = np.asarray([0,0,0]) # CM of quad, meters
 
-
+    return
 
   #
   # @brief      Simulates the plant dynamics of a quadcopter without external
   #             disturbances.
-  #               - Reproduces the measured linear duty-cycle to thrust relation
-  #                 for DC brushed coreless motors
-  #               - Accounts for gyroscopic effects from the propellors
-  #               - Accounts for IMU-frame vs. body-frame mismatch
-  #               - Accounts for motor drive asymmetry
-  #               - Assumption (1): a rectangular symmetric chassis
   #
   # @param[in]  self  A Plant object
   # @param[in]  duty  - a dictionary
-  #                   - keys {{m1p2_cw, p1p2_ccw, p1m2_cw, m1m2_ccw} representing (m)inus and
+  #                   - keys {{m1p2m3, p1p2p3, p1m2m3, m1m2p3} representing (m)inus and
   #                     (p)lus body axes 1,2 and the direction of rotation of the motor
   #                   - values representing motor-drive PWM duty-cycles between
   #                     [0,1]

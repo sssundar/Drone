@@ -23,7 +23,7 @@ def w_ss(d, cw, gamma, beta_m, beta_d):
 
 def sim(d, cw=True, thrust=False):
   Mps = 2.0/1000  # kg
-  Rps = 2.54/100  # meters
+  Rps = 0.0025 # meters
   Mpp = 0.25/1000 # kg
   wpp = 0.5/100   # meters
   lpp = 2.54/100  # meters
@@ -68,7 +68,7 @@ def sim(d, cw=True, thrust=False):
 
 if __name__ == "__main__":
   thrust = True
-  cw = False
+  cw = True
   if not thrust:
     ds = np.linspace(0,1,10)
     for d in ds:
