@@ -61,6 +61,12 @@ class Plant(object):
 
     # Chassis Mechanical Configuration
     self.config = {}
+    self.config["Propellor Orientation"] = {
+      "m1p2m3" : -1,
+      "p1p2p3" : 1,
+      "p1m2m3" : -1,
+      "m1m2p3" : 1 } # CW (-1) or CCW (1) spin direction of each propellor.
+
     self.config["l_chassis"] = 0.05 # Length of chassis in meters
     self.config["w_chassis"] = 0.05 # Width of chassis in meters
     self.config["h_chassis"] = 0.01 # Height of chassis in meters
@@ -80,12 +86,14 @@ class Plant(object):
 
     self.config["J_prop"] = 0.5*self.config["m_shaft"]*(self.config["r_shaft"]**2) # Principal moment (kg m^2) about e3 axis of propellor-shaft system (symmetric across motors)
     self.config["J_prop"] += 0.1*self.config["m_blade"]*(9*(self.config["l_blade"]**2) + 4*(self.config["w_blade"]**2))
+    self.config["J_prop_inverse"] = 1.0/self.config["J_prop"]
 
     self.config["J_chassis"] = np.eye(3) # Moment of inertia tensor (kg m^2) for chassis + propellor-shaft CM. Diagonal by assumption (1).
     self.config["J_chassis"][0,0] = self.config["h_chassis"]**2 + self.config["w_chassis"]**2
     self.config["J_chassis"][1,1] = self.config["h_chassis"]**2 + self.config["l_chassis"]**2
     self.config["J_chassis"][2,2] = self.config["l_chassis"]**2 + self.config["w_chassis"]**2
     self.config["J_chassis"] *= ((self.config["m_chassis"]/12) + self.config["m_prop"])
+    self.config["J_chassis_inverse"] = np.linalg.inv(self.config["J_chassis"])
 
     # Motor Drive Configuration. See Drone/motor/quadratic_drag.py.
     # Configured to match measurements: O(300ms) to w steady-state at duty cycles in [0.1,1].
@@ -106,6 +114,8 @@ class Plant(object):
     for k in self.config["Max RPM"].keys():
       self.config["T_prop"][k] = self.config["B_drag"]*(rpm_to_w(self.config["Max RPM"][k])**2)
     self.config["B_thrust"] = (0.04*9.8)/rpm_to_w(self.config["Max RPM Base"]**2) # w^2 to thrust (N) coefficient
+    self.thrust_force = lambda w: ((self.config["B_thrust"] * (w**2)) * np.asarray([0,0,1]))
+    self.drag_torque = lambda w: (self.config["B_drag"] * (w**2))
 
     # Field Configuration
     # Note:
@@ -144,8 +154,9 @@ class Plant(object):
   #
   # @param[in]  self  A Plant object
   # @param[in]  duty  - a dictionary
-  #                   - keys {{m1p2m3, p1p2p3, p1m2m3, m1m2p3} representing (m)inus and
-  #                     (p)lus body axes 1,2 and the direction of rotation of the motor
+  #                   - keys {{m1p2m3, p1p2p3, p1m2m3, m1m2p3} representing
+  #                     (m)inus and (p)lus body axes 1,2 and the direction of
+  #                     rotation of the motor
   #                   - values representing motor-drive PWM duty-cycles between
   #                     [0,1]
   #
@@ -157,8 +168,8 @@ class Plant(object):
   #               sample of the direction of the Earth's magnetic field from a
   #               3D compass on the quad
   #             - a: a numpy 3-vector [unit norm, unitless] representing a
-  #               sample of the direction of the Earth's gravitational field
-  #               from a 3D accelerometer on the quad
+  #               sample of the acceleration measured by a 3D accelerometer on
+  #               the quad
   #             - q: a quaternion [r, v], where v is a numpy 3-vector,
   #               representing the coordinate transformation from the quad
   #               body-frame to the space frame. rotating a vector from the quad
@@ -172,29 +183,28 @@ class Plant(object):
   #             to the IMU frame.
   #
   def evolve(self, duty):
-    # Get the rotation matrix from the principal body frame to the body frame, R
-    q = axis_angle_to_quaternion(-inputs["r_bp_b"][0], inputs["r_bp_b"][1])
-    R = np.zeros([3,3])
-    R[:,0] = quaternion_rotation([0, np.asarray([1,0,0])], q)[1]
-    R[:,1] = quaternion_rotation([0, np.asarray([0,1,0])], q)[1]
-    R[:,2] = quaternion_rotation([0, np.asarray([0,0,1])], q)[1]
+    def ddt_state(state, t):
+      omega = np.asarray([state[0], state[1], state[2]])
+      w = {
+        "m1p2m3" : state[3],
+        "p1p2p3" : state[4],
+        "p1m2m3" : state[5],
+        "m1m2p3" : state[6]
+      }
+      ddt_omega = np.cross(-omega, np.dot(self.config["J_chassis"], omega))
+      ddt_w = {}
+      for k in w.keys():
+        ddt_w[k] = 0
+      for k in w.keys():
+        internal_torque_k = duty[k] * ((self.config["Propellor Orientation"] * self.config["T_prop"]) - (self.config["B_motor"] * w[k]))
+        ddt_w[k] = internal_torque_k - (self.config["Propellor Orientation"] * self.drag_torque(w[k]))
+        ddt_w[k] *= self.config["J_prop_inverse"]
 
-    # Get the moment of inertia matrix with respect to the body frame, J_b = R J_bp R^T
-    J_b = np.dot(np.dot(R, inputs["J_bp"]), np.transpose(R))
-    J_b_inv = np.linalg.inv(J_b)
-
-    # Use q to compute the initial angular velocity as seen from the body frame
-    w_b0 = quaternion_rotation([0, inputs["w_bp"]], q)[1]
-
-    # Get the quaternion which represents the rotation from the standard inertial frame to the initial body frame
-    q_i = axis_angle_to_quaternion(-inputs["r_i_bp"][0], inputs["r_i_bp"][1])
-    q_b = axis_angle_to_quaternion(-inputs["r_bp_b"][0], inputs["r_bp_b"][1])
-    # Represents the coordinate transformation we would apply to represent a vector from I in B, initially.
-    q_ib = quaternion_product(p=q_b, q=q_i, normalize=True)
-
-    # Adaptive integration of the equations of motion in the body frame for free body rotation under zero torque
-    def ddt_wb(w, t):
-      return np.dot(J_b_inv, np.cross(np.dot(J_b, w), w))
+        ddt_omega += np.cross(self.config["R_prop"][k], self.thrust_force(w[k]))
+        ddt_omega -= (internal_torque_k * np.asarray([0,0,1]))
+        ddt_omega -= np.cross(omega, (self.config["J_prop"] * w[k] * np.asarray[0,0,1]))
+      ddt_omega = np.dot(self.config["J_chassis_inverse"], ddt_omega)
+      return HERE
 
     N_samples = int( (inputs["t_f"]*1.0) / dt )
     time_s = np.linspace(0, inputs["t_f"], N_samples)
