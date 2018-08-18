@@ -162,12 +162,12 @@ class Plant(object):
   #
   # @return     outputs, a dictionary with the following fields, computed
   #             without noise, bias, jitter, or delay:
-  #             - w: a numpy 3-vector [rad/s] representing a sample from a 3D
+  #             - n: a numpy 3-vector [rad/s] representing a sample from a 3D
   #               gyroscope on the quad
   #             - m: a numpy 3-vector [unit norm, unitless] representing a
   #               sample of the direction of the Earth's magnetic field from a
   #               3D compass on the quad
-  #             - a: a numpy 3-vector [unit norm, unitless] representing a
+  #             - a: a numpy 3-vector in [Newtons] representing a
   #               sample of the acceleration measured by a 3D accelerometer on
   #               the quad
   #             - q: a quaternion [r, v], where v is a numpy 3-vector,
@@ -204,30 +204,31 @@ class Plant(object):
         ddt_omega -= (internal_torque_k * np.asarray([0,0,1]))
         ddt_omega -= np.cross(omega, (self.config["J_prop"] * w[k] * np.asarray[0,0,1]))
       ddt_omega = np.dot(self.config["J_chassis_inverse"], ddt_omega)
-      return HERE
+      return np.asarray([ ddt_omega[0],
+                          ddt_omega[1],
+                          ddt_omega[2],
+                          ddt_w["m1p2m3"],
+                          ddt_w["p1p2p3"],
+                          ddt_w["p1m2m3"],
+                          ddt_w["m1m2p3"] ])
 
-    N_samples = int( (inputs["t_f"]*1.0) / dt )
-    time_s = np.linspace(0, inputs["t_f"], N_samples)
-    w_b = odeint(ddt_wb, w_b0, t = time_s)
+    state_0 = np.asarray([ self.state["Omega"][0],
+                           self.state["Omega"][1],
+                           self.state["Omega"][2],
+                           self.state["w"]["m1p2m3"],
+                           self.state["w"]["p1p2p3"],
+                           self.state["w"]["p1m2m3"],
+                           self.state["w"]["m1m2p3"] ])
+    state_dt = odeint(ddt_state, state_0, t = [0, self.dt])[1]
 
-    # Collect outputs so far!
-    outputs = {}
-    outputs["m_i"] = inputs["m_i"]
-    outputs["a_i"] = inputs["a_i"]
-    outputs["t_s"] = time_s
-    outputs["w_b"] = w_b
+    self.state["Omega"] = np.asarray([state_dt[0], state_dt[1], state_dt[2]])
+    self.state["w"]["m1p2m3"] = state_dt[3]
+    self.state["w"]["p1p2p3"] = state_dt[4]
+    self.state["w"]["p1m2m3"] = state_dt[5]
+    self.state["w"]["m1m2p3"] = state_dt[6]
 
-    # Compute the time series of:
-    # - ground truth coordinate transformation
-    # - the magnetic, gravitational fields as seen from the body frame
-    outputs["q_b"] = [quaternion_inverse(q_ib)]
-    outputs["m_b"] = [quaternion_rotation([0, inputs["m_i"]], q_ib)[1]]
-    outputs["a_b"] = [quaternion_rotation([0, inputs["a_i"]], q_ib)[1]]
-    for idx in xrange(len(w_b)-1):
-      q_ib = quaternion_product(p=w_dt_to_quaternion(-w_b[idx], dt), q=q_ib, normalize=True)
-      outputs["q_b"].append(quaternion_inverse(q_ib))
-      outputs["m_b"].append(quaternion_rotation([0, inputs["m_i"]], q_ib)[1])
-      outputs["a_b"].append(quaternion_rotation([0, inputs["a_i"]], q_ib)[1])
+    # TODO Add q, r to state and ddt_state
+    # That's more realistic. Normalize q when you use it to compute things in ddt_state
 
-    return outputs
-
+    # TODO Use the final Omega, q, q_offset to generate measurements from the IMU
+    # Fake calibration (offline) in estimation code.
