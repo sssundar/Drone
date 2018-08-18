@@ -119,7 +119,10 @@ class Plant(object):
     self.config["H"] = np.asarray([0.5,0,np.sqrt(3)/2]) # Normalized, unitless.
 
     # IMU Misalignment Configuration
-    self.config[""] = TODO See free_body.py
+    # Note:
+    #   q_offset represents a transformation from a vector in the quad frame to the IMU frame
+    #   so a 1 degree offset in the quad frame would be a -1 degree transformation.
+    self.config["q_offset"] = axis_angle_to_quaternion(np.asarray([1,0,0]), -np.pi/180)
 
     # State Variables
     # We start out immobile and perfectly aligned with the space frame.
