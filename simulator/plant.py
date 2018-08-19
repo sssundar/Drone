@@ -145,6 +145,7 @@ class Plant(object):
                         } # rad/s propellor angular velocity
     self.state["q"] = [1, np.asarray([0,0,0])] # quaternion ([r, v] with v a numpy 3-vector) representing quad-to-space transformation
     self.state["R"] = np.asarray([0,0,0]) # CM of quad, meters
+    self.state["ddt_R"] = np.asarray([0,0,0]) # d/dt of CM of quad, meters/s
 
     return
 
@@ -183,6 +184,26 @@ class Plant(object):
   #             to the IMU frame.
   #
   def evolve(self, duty):
+    state_0 = np.asarray([
+                  self.state["Omega"][0],          # 0
+                  self.state["Omega"][1],          # 1
+                  self.state["Omega"][2],          # 2
+                  self.state["w"]["m1p2m3"],       # 3
+                  self.state["w"]["p1p2p3"],       # 4
+                  self.state["w"]["p1m2m3"],       # 5
+                  self.state["w"]["m1m2p3"],       # 6
+                  self.state["q"][0],              # 7
+                  self.state["q"][1][0],           # 8
+                  self.state["q"][1][1],           # 9
+                  self.state["q"][1][2],           # 10
+                  self.state["R"][0],              # 11
+                  self.state["R"][1],              # 12
+                  self.state["R"][2],              # 13
+                  self.state["ddt_R"][0],          # 14
+                  self.state["ddt_R"][1],          # 15
+                  self.state["ddt_R"][2],          # 16
+                  ])
+
     def ddt_state(state, t):
       omega = np.asarray([state[0], state[1], state[2]])
       w = {
@@ -191,10 +212,15 @@ class Plant(object):
         "p1m2m3" : state[5],
         "m1m2p3" : state[6]
       }
+      q = [state[7], np.asarray(state[8], state[9], state[10])]
+      r = np.asarray([state[11], state[12], state[13]])
+      ddt_r = np.asarray([state[14], state[15], state[16]])
+
       ddt_omega = np.cross(-omega, np.dot(self.config["J_chassis"], omega))
       ddt_w = {}
       for k in w.keys():
         ddt_w[k] = 0
+
       for k in w.keys():
         internal_torque_k = duty[k] * ((self.config["Propellor Orientation"] * self.config["T_prop"]) - (self.config["B_motor"] * w[k]))
         ddt_w[k] = internal_torque_k - (self.config["Propellor Orientation"] * self.drag_torque(w[k]))
@@ -204,21 +230,33 @@ class Plant(object):
         ddt_omega -= (internal_torque_k * np.asarray([0,0,1]))
         ddt_omega -= np.cross(omega, (self.config["J_prop"] * w[k] * np.asarray[0,0,1]))
       ddt_omega = np.dot(self.config["J_chassis_inverse"], ddt_omega)
+
+      ddt_q = quaternion_times_scalar(scalar=0.5, quaternion=quaternion_product(p=q, q=[0, omega], normalize=False))
+
+      # Net Force in Space Frame
+      q_n = quaternion_product(p=[0, np.asarray([0,0,0])], q=q, normalize=True)
+      thrust = quaternion_rotation(qv=[0, sum([self.thrust_force(w[k]) for k in w.keys()])], qr=q_n)[1]
+      d2dt2_r =  self.config["G"] + (thrust/(self.config["m_chassis"] + 4*self.config["m_prop"]))
+
       return np.asarray([ ddt_omega[0],
                           ddt_omega[1],
                           ddt_omega[2],
                           ddt_w["m1p2m3"],
                           ddt_w["p1p2p3"],
                           ddt_w["p1m2m3"],
-                          ddt_w["m1m2p3"] ])
+                          ddt_w["m1m2p3"],
+                          ddt_q[0],
+                          ddt_q[1][0],
+                          ddt_q[1][1],
+                          ddt_q[1][2],
+                          ddt_r[0],
+                          ddt_r[1],
+                          ddt_r[2],
+                          d2dt2_r[0],
+                          d2dt2_r[1],
+                          d2dt2_r[2]
+                          ])
 
-    state_0 = np.asarray([ self.state["Omega"][0],
-                           self.state["Omega"][1],
-                           self.state["Omega"][2],
-                           self.state["w"]["m1p2m3"],
-                           self.state["w"]["p1p2p3"],
-                           self.state["w"]["p1m2m3"],
-                           self.state["w"]["m1m2p3"] ])
     state_dt = odeint(ddt_state, state_0, t = [0, self.dt])[1]
 
     self.state["Omega"] = np.asarray([state_dt[0], state_dt[1], state_dt[2]])
@@ -226,9 +264,9 @@ class Plant(object):
     self.state["w"]["p1p2p3"] = state_dt[4]
     self.state["w"]["p1m2m3"] = state_dt[5]
     self.state["w"]["m1m2p3"] = state_dt[6]
-
-    # TODO Add q, r to state and ddt_state
-    # That's more realistic. Normalize q when you use it to compute things in ddt_state
+    self.state["q"] = [state_dt[7], np.asarray([state_dt[8], state_dt[9], state_dt[10]])]
+    self.state["q"] = quaternion_product(p=[0, np.asarray([0,0,0])], q=self.state["q"], normalize=True)
+    self.state["R"] = np.asarray([state_dt[11], state_dt[12], state_dt[13]])
+    self.state["ddt_R"] = np.asarray([state_dt[14], state_dt[15], state_dt[16]])
 
     # TODO Use the final Omega, q, q_offset to generate measurements from the IMU
-    # Fake calibration (offline) in estimation code.
