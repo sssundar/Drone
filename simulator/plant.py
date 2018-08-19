@@ -161,8 +161,7 @@ class Plant(object):
   #                   - values representing motor-drive PWM duty-cycles between
   #                     [0,1]
   #
-  # @return     outputs, a dictionary with the following fields, computed
-  #             without noise, bias, jitter, or delay:
+  # @return     computed without noise, bias, jitter, or delay:
   #             - n: a numpy 3-vector [rad/s] representing a sample from a 3D
   #               gyroscope on the quad
   #             - m: a numpy 3-vector [unit norm, unitless] representing a
@@ -204,6 +203,10 @@ class Plant(object):
                   self.state["ddt_R"][2],          # 16
                   ])
 
+    def space_frame_acceleration(self, w, q):
+      thrust = quaternion_rotation(qv=[0, sum([self.thrust_force(w[k]) for k in w.keys()])], qr=q)[1]
+      return self.config["G"] + (thrust/(self.config["m_chassis"] + 4*self.config["m_prop"]))
+
     def ddt_state(state, t):
       omega = np.asarray([state[0], state[1], state[2]])
       w = {
@@ -234,9 +237,8 @@ class Plant(object):
       ddt_q = quaternion_times_scalar(scalar=0.5, quaternion=quaternion_product(p=q, q=[0, omega], normalize=False))
 
       # Net Force in Space Frame
-      q_n = quaternion_product(p=[0, np.asarray([0,0,0])], q=q, normalize=True)
-      thrust = quaternion_rotation(qv=[0, sum([self.thrust_force(w[k]) for k in w.keys()])], qr=q_n)[1]
-      d2dt2_r =  self.config["G"] + (thrust/(self.config["m_chassis"] + 4*self.config["m_prop"]))
+      q_n = quaternion_product(p=[1, np.asarray([0,0,0])], q=q, normalize=True)
+      d2dt2_r = self.space_frame_acceleration(w, q_n)
 
       return np.asarray([ ddt_omega[0],
                           ddt_omega[1],
@@ -265,8 +267,12 @@ class Plant(object):
     self.state["w"]["p1m2m3"] = state_dt[5]
     self.state["w"]["m1m2p3"] = state_dt[6]
     self.state["q"] = [state_dt[7], np.asarray([state_dt[8], state_dt[9], state_dt[10]])]
-    self.state["q"] = quaternion_product(p=[0, np.asarray([0,0,0])], q=self.state["q"], normalize=True)
+    self.state["q"] = quaternion_product(p=[1, np.asarray([0,0,0])], q=self.state["q"], normalize=True)
     self.state["R"] = np.asarray([state_dt[11], state_dt[12], state_dt[13]])
     self.state["ddt_R"] = np.asarray([state_dt[14], state_dt[15], state_dt[16]])
 
-    # TODO Use the final Omega, q, q_offset to generate measurements from the IMU
+    n = quaternion_rotation(qv=self.state["Omega"],qr=self.config["q_offset"])[1]
+    m = quaternion_rotation(qv=quaternion_rotation(qv=[0, self.config["H"]], qr=quaternion_inverse(self.state["q"])), qr=self.config["q_offset"])[1]
+    a = self.space_frame_acceleration(self.state["w"], self.state["q"]) - self.config["G"]
+    a = quaternion_rotation(qv=quaternion_rotation(qv=[0, a], qr=quaternion_inverse(self.state["q"])), qr=self.config["q_offset"])[1]
+    return (n, m, a, self.state["q"], self.state["R"])
