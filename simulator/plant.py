@@ -150,6 +150,24 @@ class Plant(object):
     return
 
   #
+  # @brief      A helper function which returns the space frame acceleration due
+  #             to gravity and thrust
+  #
+  # @param[in]  self  A Plant object
+  # @param[in]  w     A dictionary of motor angular velocities (keys: {m1p2m3,
+  #                   p1p2p3, p1m2m3, m1m2p3}) in rad/s
+  # @param[in]  q     A quaternion of the form [r,v] with representing the
+  #                   coordinate transformation from the quad body frame to the
+  #                   space frame.
+  #
+  # @return     A numpy 3-vector representing the net acceleration of the quad
+  #             as seen from the space frame.
+  #
+  def space_frame_acceleration(self, w, q):
+    thrust = quaternion_rotation(qv=[0, sum([self.thrust_force(w[k]) for k in w.keys()])], qr=q)[1]
+    return self.config["G"] + (thrust/(self.config["m_chassis"] + 4*self.config["m_prop"]))
+
+  #
   # @brief      Simulates the plant dynamics of a quadcopter without external
   #             disturbances.
   #
@@ -203,10 +221,6 @@ class Plant(object):
                   self.state["ddt_R"][2],          # 16
                   ])
 
-    def space_frame_acceleration(self, w, q):
-      thrust = quaternion_rotation(qv=[0, sum([self.thrust_force(w[k]) for k in w.keys()])], qr=q)[1]
-      return self.config["G"] + (thrust/(self.config["m_chassis"] + 4*self.config["m_prop"]))
-
     def ddt_state(state, t):
       omega = np.asarray([state[0], state[1], state[2]])
       w = {
@@ -215,7 +229,7 @@ class Plant(object):
         "p1m2m3" : state[5],
         "m1m2p3" : state[6]
       }
-      q = [state[7], np.asarray(state[8], state[9], state[10])]
+      q = [state[7], np.asarray([state[8], state[9], state[10]])]
       r = np.asarray([state[11], state[12], state[13]])
       ddt_r = np.asarray([state[14], state[15], state[16]])
 
@@ -225,13 +239,13 @@ class Plant(object):
         ddt_w[k] = 0
 
       for k in w.keys():
-        internal_torque_k = duty[k] * ((self.config["Propellor Orientation"] * self.config["T_prop"]) - (self.config["B_motor"] * w[k]))
-        ddt_w[k] = internal_torque_k - (self.config["Propellor Orientation"] * self.drag_torque(w[k]))
+        internal_torque_k = duty[k] * ((self.config["Propellor Orientation"][k] * self.config["T_prop"][k]) - (self.config["B_motor"] * w[k]))
+        ddt_w[k] = internal_torque_k - (self.config["Propellor Orientation"][k] * self.drag_torque(w[k]))
         ddt_w[k] *= self.config["J_prop_inverse"]
 
         ddt_omega += np.cross(self.config["R_prop"][k], self.thrust_force(w[k]))
         ddt_omega -= (internal_torque_k * np.asarray([0,0,1]))
-        ddt_omega -= np.cross(omega, (self.config["J_prop"] * w[k] * np.asarray[0,0,1]))
+        ddt_omega -= np.cross(omega, (self.config["J_prop"] * w[k] * np.asarray([0,0,1])))
       ddt_omega = np.dot(self.config["J_chassis_inverse"], ddt_omega)
 
       ddt_q = quaternion_times_scalar(scalar=0.5, quaternion=quaternion_product(p=q, q=[0, omega], normalize=False))
@@ -271,7 +285,7 @@ class Plant(object):
     self.state["R"] = np.asarray([state_dt[11], state_dt[12], state_dt[13]])
     self.state["ddt_R"] = np.asarray([state_dt[14], state_dt[15], state_dt[16]])
 
-    n = quaternion_rotation(qv=self.state["Omega"],qr=self.config["q_offset"])[1]
+    n = quaternion_rotation(qv=[0, self.state["Omega"]],qr=self.config["q_offset"])[1]
     m = quaternion_rotation(qv=quaternion_rotation(qv=[0, self.config["H"]], qr=quaternion_inverse(self.state["q"])), qr=self.config["q_offset"])[1]
     a = self.space_frame_acceleration(self.state["w"], self.state["q"]) - self.config["G"]
     a = quaternion_rotation(qv=quaternion_rotation(qv=[0, a], qr=quaternion_inverse(self.state["q"])), qr=self.config["q_offset"])[1]
