@@ -23,9 +23,10 @@ class Plant(object):
   #               - Measurement (4): Electrical timescales <<< Mechanical timescales (winding inductance, for instance).
   #
   # @param[in]  self  A Plant object
-  # @param[in]  dt    the time-step to simulate, in seconds
+  # @param[in]  dt    The time-step to simulate, in seconds
+  # @param[in]  symmetric Is this meant to be a fully symmetric quadcopter?
   #
-  def __init__(self, dt):
+  def __init__(self, dt, symmetric=True):
     # Quad Frame Definition
     #
     # Bodies 1,2,3,4 are the four propellor-shaft systems rigidly attached
@@ -95,28 +96,6 @@ class Plant(object):
     self.config["J_chassis"] *= ((self.config["m_chassis"]/12) + self.config["m_prop"])
     self.config["J_chassis_inverse"] = np.linalg.inv(self.config["J_chassis"])
 
-    # Motor Drive Configuration. See Drone/motor/quadratic_drag.py.
-    # Configured to match measurements: O(300ms) to w steady-state at duty cycles in [0.1,1].
-    # Configured to match measurements: ~40g peak thrust
-    # Configured for a 12,000 RPM limit; this was guessed and seems reasonable.
-    # These configurations ensure T_prop >>> B_motor >> B_drag, which keeps w_ss ~ duty^0.5,
-    # which satisfies the measured linear duty-thrust relationship assuming quadratic w-thrust.
-    self.config["Max RPM Base"] = 12000.0 # rotations per minute
-    self.config["Max RPM"] = {"m1p2m3" : 0.97*self.config["Max RPM Base"],
-                              "p1p2p3" : 1.03*self.config["Max RPM Base"],
-                              "p1m2m3" : 1.02*self.config["Max RPM Base"],
-                              "m1m2p3" : 0.98*self.config["Max RPM Base"],
-                              }
-    rpm_to_w = lambda rpm: (2*np.pi*rpm)/60 # rad/s
-    self.config["B_drag"] = self.config["J_prop"]/120 # w^2 to drag (Nm) coefficient
-    self.config["B_motor"] = 10*self.config["B_drag"] # w to effective EMF drive counter-torque (Nm) coefficient
-    self.config["T_prop"] = {} # Maximum drive torque (Nm), by motor (asymmetry possible)
-    for k in self.config["Max RPM"].keys():
-      self.config["T_prop"][k] = self.config["B_drag"]*(rpm_to_w(self.config["Max RPM"][k])**2)
-    self.config["B_thrust"] = (0.04*9.8)/rpm_to_w(self.config["Max RPM Base"]**2) # w^2 to thrust (N) coefficient
-    self.thrust_force = lambda w: ((self.config["B_thrust"] * (w**2)) * np.asarray([0,0,1]))
-    self.drag_torque = lambda w: (self.config["B_drag"] * (w**2))
-
     # Field Configuration
     # Note:
     #   At hover, there is no acceleration but the IMU will read -G (+9.8 +z) due to the test mass resting on the bottom wall.
@@ -127,6 +106,35 @@ class Plant(object):
     #   So, at all times, the IMU reads the net acceleration minus gravity (-9.8z).
     self.config["G"] = np.asarray([0,0,-9.8]) # m/s^2
     self.config["H"] = np.asarray([0.5,0,np.sqrt(3)/2]) # Normalized, unitless.
+
+    # Motor Drive Configuration. See Drone/motor/quadratic_drag.py.
+    # Configured to match measurements: O(300ms) to w steady-state at duty cycles in [0.1,1].
+    # Configured to match measurements: ~40g peak thrust
+    # Configured for a 12,000 RPM limit; this was guessed and seems reasonable.
+    # These configurations ensure T_prop >>> B_motor >> B_drag, which keeps w_ss ~ duty^0.5,
+    # which satisfies the measured linear duty-thrust relationship assuming quadratic w-thrust.
+    self.config["Max RPM Base"] = 12000.0 # rotations per minute
+    if not symmetric:
+      self.config["Max RPM"] = {"m1p2m3" : 0.97*self.config["Max RPM Base"],
+                                "p1p2p3" : 1.03*self.config["Max RPM Base"],
+                                "p1m2m3" : 1.02*self.config["Max RPM Base"],
+                                "m1m2p3" : 0.98*self.config["Max RPM Base"],
+                                }
+    else:
+      self.config["Max RPM"] = {"m1p2m3" : 1.00*self.config["Max RPM Base"],
+                                "p1p2p3" : 1.00*self.config["Max RPM Base"],
+                                "p1m2m3" : 1.00*self.config["Max RPM Base"],
+                                "m1m2p3" : 1.00*self.config["Max RPM Base"],
+                                }
+    self.rpm_to_w = lambda rpm: (2*np.pi*rpm)/60 # rad/s
+    self.config["B_drag"] = self.config["J_prop"]/120 # w^2 to drag (Nm) coefficient
+    self.config["B_motor"] = 10*self.config["B_drag"] # w to effective EMF drive counter-torque (Nm) coefficient
+    self.config["T_prop"] = {} # Maximum drive torque (Nm), by motor (asymmetry possible)
+    for k in self.config["Max RPM"].keys():
+      self.config["T_prop"][k] = self.config["B_drag"]*(self.rpm_to_w(self.config["Max RPM"][k])**2)
+    self.config["B_thrust"] = (0.04*(-self.config["G"]))/(self.rpm_to_w(self.config["Max RPM Base"])**2) # w^2 to thrust (N) coefficient
+    self.thrust_force = lambda w: ((self.config["B_thrust"] * (w**2)) * np.asarray([0,0,1]))
+    self.drag_torque = lambda w: (self.config["B_drag"] * (w**2))
 
     # IMU Misalignment Configuration
     # Note:
@@ -143,9 +151,10 @@ class Plant(object):
                         "p1m2m3" : 0.0,
                         "m1m2p3" : 0.0
                         } # rad/s propellor angular velocity
-    self.state["q"] = [1, np.asarray([0,0,0])] # quaternion ([r, v] with v a numpy 3-vector) representing quad-to-space transformation
+    self.state["q"] = [1.0, np.asarray([0,0,0])] # quaternion ([r, v] with v a numpy 3-vector) representing quad-to-space transformation
     self.state["R"] = np.asarray([0,0,0]) # CM of quad, meters
     self.state["ddt_R"] = np.asarray([0,0,0]) # d/dt of CM of quad, meters/s
+    self.state["d2dt2_R"] = np.asarray([0,0,0]) # d2/dt2 of CM of quad, meters/s^2
 
     return
 
@@ -179,23 +188,29 @@ class Plant(object):
   #                   - values representing motor-drive PWM duty-cycles between
   #                     [0,1]
   #
-  # @return     computed without noise, bias, jitter, or delay:
-  #             - n: a numpy 3-vector [rad/s] representing a sample from a 3D
-  #               gyroscope on the quad
-  #             - m: a numpy 3-vector [unit norm, unitless] representing a
-  #               sample of the direction of the Earth's magnetic field from a
-  #               3D compass on the quad
-  #             - a: a numpy 3-vector in [Newtons] representing a
-  #               sample of the acceleration measured by a 3D accelerometer on
-  #               the quad
-  #             - q: a quaternion [r, v], where v is a numpy 3-vector,
-  #               representing the coordinate transformation from the quad
-  #               body-frame to the space frame. rotating a vector from the quad
-  #               body frame by q_b yields a space-frame representation. note
-  #               that the IMU-frame is not necessarily concident with the quad
-  #               body frame.
-  #             - r: a numpy 3-vector representing the center of mass of the
-  #               quad in the space frame.
+  # @return     computed without noise (excepting numerical), bias, jitter, or
+  #             delay:
+  #             - Measurements
+  #              - n: a numpy 3-vector [rad/s] representing a sample from a 3D
+  #                gyroscope on the quad
+  #              - m: a numpy 3-vector [unit norm, unitless] representing a
+  #                sample of the direction of the Earth's magnetic field from a
+  #                3D compass on the quad
+  #              - a: a numpy 3-vector in [Newtons] representing a sample of the
+  #                acceleration measured by a 3D accelerometer on the quad
+  #             - Ground Truth
+  #              - q: a quaternion [r, v], where v is a numpy 3-vector,
+  #                representing the coordinate transformation from the quad
+  #                body-frame to the space frame. rotating a vector from the quad
+  #                body frame by q_b yields a space-frame representation. note
+  #                that the IMU-frame is not necessarily concident with the quad
+  #                body frame.
+  #              - r: a numpy 3-vector representing the center of mass of the
+  #                quad in the space frame.
+  #              - ddt_r: a numpy 3-vector representing the derivative of r in the
+  #                space-frame.
+  #              - d2dt2_r: a numpy 3-vector representing the 2nd derivative of r in
+  #                the space-frame.
   #
   # @note       The simulator operates in the quad frame, then rotates samples
   #             to the IMU frame.
@@ -233,13 +248,11 @@ class Plant(object):
       r = np.asarray([state[11], state[12], state[13]])
       ddt_r = np.asarray([state[14], state[15], state[16]])
 
-      ddt_omega = np.cross(-omega, np.dot(self.config["J_chassis"], omega))
       ddt_w = {}
-      for k in w.keys():
-        ddt_w[k] = 0
-
+      ddt_omega = np.cross(-omega, np.dot(self.config["J_chassis"], omega))
       for k in w.keys():
         internal_torque_k = duty[k] * ((self.config["Propellor Orientation"][k] * self.config["T_prop"][k]) - (self.config["B_motor"] * w[k]))
+
         ddt_w[k] = internal_torque_k - (self.config["Propellor Orientation"][k] * self.drag_torque(w[k]))
         ddt_w[k] *= self.config["J_prop_inverse"]
 
@@ -284,9 +297,23 @@ class Plant(object):
     self.state["q"] = quaternion_product(p=[1, np.asarray([0,0,0])], q=self.state["q"], normalize=True)
     self.state["R"] = np.asarray([state_dt[11], state_dt[12], state_dt[13]])
     self.state["ddt_R"] = np.asarray([state_dt[14], state_dt[15], state_dt[16]])
+    self.state["d2dt2_R"] = self.space_frame_acceleration(self.state["w"], self.state["q"])
 
-    n = quaternion_rotation(qv=[0, self.state["Omega"]],qr=self.config["q_offset"])[1]
-    m = quaternion_rotation(qv=quaternion_rotation(qv=[0, self.config["H"]], qr=quaternion_inverse(self.state["q"])), qr=self.config["q_offset"])[1]
-    a = self.space_frame_acceleration(self.state["w"], self.state["q"]) - self.config["G"]
-    a = quaternion_rotation(qv=quaternion_rotation(qv=[0, a], qr=quaternion_inverse(self.state["q"])), qr=self.config["q_offset"])[1]
-    return (n, m, a, self.state["q"], self.state["R"])
+    # This is already in the quad-frame. We simply rotate to the IMU frame.
+    n = self.state["Omega"]
+    n = quaternion_rotation(qv=[0, n],qr=self.config["q_offset"])[1]
+
+    # This is specified in the space-frame, so we rotate from space->quad->IMU frame.
+    m = self.config["H"]
+    m = quaternion_rotation(qv=[0, m], qr=quaternion_inverse(self.state["q"]))[1]
+    m = quaternion_rotation(qv=[0, m], qr=self.config["q_offset"])[1]
+
+    # This is calculated in the space-frame, so we rotate from space->quad->IMU frame.
+    # Aside: A prediction made here is that the IMU will always see quad-frame z-acceleration (no x,y)
+    # because it only measures acceleration relative to free-fall.
+    a = self.state["d2dt2_R"] - self.config["G"]
+    a = quaternion_rotation(qv=[0, a], qr=quaternion_inverse(self.state["q"]))[1]
+    a = quaternion_rotation(qv=[0, a], qr=self.config["q_offset"])[1]
+
+    return (n, m, a, self.state["q"], self.state["R"], self.state["ddt_R"], self.state["d2dt2_R"])
+
