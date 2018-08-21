@@ -198,7 +198,7 @@ class Plant(object):
   #              - m: a numpy 3-vector [unit norm, unitless] representing a
   #                sample of the direction of the Earth's magnetic field from a
   #                3D compass on the quad
-  #              - a: a numpy 3-vector in [Newtons] representing a sample of the
+  #              - a: a numpy 3-vector in [m/s^2] representing a sample of the
   #                acceleration measured by a 3D accelerometer on the quad
   #             - Ground Truth
   #              - q: a quaternion [r, v], where v is a numpy 3-vector,
