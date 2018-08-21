@@ -319,17 +319,26 @@ class Plant(object):
 
     return (n, m, a, self.state["q"], self.state["R"], self.state["ddt_R"], self.state["d2dt2_R"])
 
-# From playing with symmetry of the duty cycles (left vs right,
-# only one on, cw vs ccw), we learn the following:
+# From playing with symmetry of the duty cycles (left vs right, only one on, cw
+# vs ccw), we learn the following:
 # - Our device has a tiny moment of inertia. We'll have O(100ms) to react, or
 #   O(10) controller time steps at 100Hz.
 # - A perfectly symmetric quad falls straight down. Any growth of velocity
-#   should be considered real. Numerical error is negligible on up to <10s timescales.
-# - The scale of time (motors) and acceleration matches our expectation (O(200ms), O(g)).
+#   should be considered real. Numerical error is negligible on up to <10s
+#   timescales.
+# - The scale of time (motors) and acceleration matches our expectation
+#   (O(200ms), O(g)).
 # - We may consider the Plant usable as of 8/20/2018.
 #
 # Aside
-# - https://www.youtube.com/watch?v=1n-HMSCDYtM shows what happens if you only have one motor on, we think.
+# - https://www.youtube.com/watch?v=1n-HMSCDYtM shows what happens if you only
+#   have one motor on. A single motor always torques in the same direction, in
+#   the body frame. If you tweak
+#   Drone/rotation/madgwick_complementary_filter/free_body and state_estimation
+#   to simulate a constant body torque of [0.2,-0.2,0] for 3 seconds, without
+#   decimation, for a body with 2 equal principal axes and 1 of half the
+#   magnitude (aka like our quad) you will find it tumbles in exactly the same
+#   way as "spin == tumble" here.
 def Test_FreeFall(spin, visual=False):
   dt=0.01
   t_s = np.asarray(range(100))*dt
