@@ -330,16 +330,45 @@ class Plant(object):
 #
 # Aside
 # - https://www.youtube.com/watch?v=1n-HMSCDYtM shows what happens if you only have one motor on, we think.
-def Test_FreeFall(visual=False):
+def Test_FreeFall(spin, visual=False):
   dt=0.01
-  t_s = np.asarray(range(200))*dt
+  t_s = np.asarray(range(100))*dt
   quad = Plant(dt=dt)
-  u = {
-    "m1p2m3" : 0.2,
-    "p1p2p3" : 0.3,
-    "p1m2m3" : 0.2,
-    "m1m2p3" : 0.3
-    }
+  if spin == "z":
+    u = {
+      "m1p2m3" : 0.2,
+      "p1p2p3" : 0.3,
+      "p1m2m3" : 0.2,
+      "m1m2p3" : 0.3
+      }
+  elif spin == "x":
+    u = {
+      "m1p2m3" : 0.3,
+      "p1p2p3" : 0.3,
+      "p1m2m3" : 0.2,
+      "m1m2p3" : 0.2
+      }
+  elif spin == "y":
+    u = {
+      "m1p2m3" : 0.2,
+      "p1p2p3" : 0.3,
+      "p1m2m3" : 0.3,
+      "m1m2p3" : 0.2
+      }
+  elif spin == "none":
+    u = {
+      "m1p2m3" : 0.3,
+      "p1p2p3" : 0.3,
+      "p1m2m3" : 0.3,
+      "m1m2p3" : 0.3
+      }
+  elif spin == "tumble":
+    u = {
+      "m1p2m3" : 0.2,
+      "p1p2p3" : 0.0,
+      "p1m2m3" : 0.0,
+      "m1m2p3" : 0.0
+      }
   gyro = []
   compass = []
   accel = []
@@ -400,4 +429,4 @@ def Test_FreeFall(visual=False):
     plt.show()
 
 if __name__ == "__main__":
-  Test_FreeFall(visual=True)
+  Test_FreeFall(spin="none", visual=True)
