@@ -3,6 +3,7 @@ import numpy as np
 from scipy.integrate import odeint
 from quaternions import *
 from matplotlib import pyplot as plt
+from animate import *
 
 # See Quad notes from 7/31/2018-8/13/2018 for derivations.
 class Plant(object):
@@ -326,15 +327,18 @@ class Plant(object):
 #   should be considered real. Numerical error is negligible on up to <10s timescales.
 # - The scale of time (motors) and acceleration matches our expectation (O(200ms), O(g)).
 # - We may consider the Plant usable as of 8/20/2018.
+#
+# Aside
+# - https://www.youtube.com/watch?v=1n-HMSCDYtM shows what happens if you only have one motor on, we think.
 def Test_FreeFall(visual=False):
   dt=0.01
   t_s = np.asarray(range(200))*dt
   quad = Plant(dt=dt)
   u = {
     "m1p2m3" : 0.2,
-    "p1p2p3" : 0.0,
-    "p1m2m3" : 0.0,
-    "m1m2p3" : 0.0
+    "p1p2p3" : 0.3,
+    "p1m2m3" : 0.2,
+    "m1m2p3" : 0.3
     }
   gyro = []
   compass = []
@@ -396,4 +400,4 @@ def Test_FreeFall(visual=False):
     plt.show()
 
 if __name__ == "__main__":
-  Test_FreeFall(visual=False)
+  Test_FreeFall(visual=True)
