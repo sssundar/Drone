@@ -16,19 +16,26 @@ class Plant(object):
   #               - Accounts for motor drive asymmetry
   #
   #               - Assertion (1a): a rigid rectangular symmetric chassis.
-  #               - Assertion (1b): a rigid propellor-shaft system fixed in the quad z axis.
+  #               - Assertion (1b): a rigid propellor-shaft system fixed in the
+  #                 quad z axis.
   #               - Assertion (2): negligible chassis air resistance.
-  #               - Measurement (3a): linear duty-cycle to thrust relation for small DC brushed motors.
-  #               - Assertion (3b): quadratic w to thrust relation by a momentum transfer accounting
+  #               - Measurement (3a): linear duty-cycle to thrust relation for
+  #                 small DC brushed motors.
+  #               - Assertion (3b): quadratic w to thrust relation by a momentum
+  #                 transfer accounting
   #               - Assertion (3c): quadratic w to drag torque relation
-  #               - Assertion (3d): very weak drag torque relative to peak motor torque
-  #               - Measurement (4): Electrical timescales <<< Mechanical timescales (winding inductance, for instance).
+  #               - Assertion (3d): very weak drag torque relative to peak motor
+  #                 torque
+  #               - Measurement (4): Electrical timescales <<< Mechanical
+  #                 timescales (winding inductance, for instance).
   #
-  # @param[in]  self  A Plant object
-  # @param[in]  dt    The time-step to simulate, in seconds
-  # @param[in]  symmetric Is this meant to be a fully symmetric quadcopter?
+  # @param[in]  self       A Plant object
+  # @param[in]  dt         The time-step to simulate, in seconds
+  # @param[in]  hz         The frequency to sample at, in the time-step
+  # @param[in]  sampler    A Sampler object to feed perfect samples at hz
+  # @param[in]  symmetric  Is this meant to be a fully symmetric quadcopter?
   #
-  def __init__(self, dt, symmetric=True):
+  def __init__(self, dt, hz, sampler=None, symmetric=True):
     # Quad Frame Definition
     #
     # Bodies 1,2,3,4 are the four propellor-shaft systems rigidly attached
@@ -61,6 +68,10 @@ class Plant(object):
 
     # Time Configuration
     self.dt = dt
+    self.hz = hz
+
+    # Output Configuration
+    self.sampler = sampler
 
     # Chassis Mechanical Configuration
     self.config = {}
@@ -183,6 +194,7 @@ class Plant(object):
   #             disturbances.
   #
   # @param[in]  self  A Plant object
+  # @param[in]  t_s   Time at the start of evolution, in seconds
   # @param[in]  duty  - a dictionary
   #                   - keys {{m1p2m3, p1p2p3, p1m2m3, m1m2p3} representing
   #                     (m)inus and (p)lus body axes 1,2 and the direction of
@@ -217,7 +229,7 @@ class Plant(object):
   # @note       The simulator operates in the quad frame, then rotates samples
   #             to the IMU frame.
   #
-  def evolve(self, duty):
+  def evolve(self, t_s, duty):
     state_0 = np.asarray([
                   self.state["Omega"][0],          # 0
                   self.state["Omega"][1],          # 1
@@ -288,36 +300,42 @@ class Plant(object):
                           d2dt2_r[2]
                           ])
 
-    state_dt = odeint(ddt_state, state_0, t = [0, self.dt])[1]
+    t = np.linspace(t_s, t_s+self.dt, 1+int(self.dt/(1.0/self.hz)))
+    states = odeint(ddt_state, state_0, t=t)
 
-    self.state["Omega"] = np.asarray([state_dt[0], state_dt[1], state_dt[2]])
-    self.state["w"]["m1p2m3"] = state_dt[3]
-    self.state["w"]["p1p2p3"] = state_dt[4]
-    self.state["w"]["p1m2m3"] = state_dt[5]
-    self.state["w"]["m1m2p3"] = state_dt[6]
-    self.state["q"] = [state_dt[7], np.asarray([state_dt[8], state_dt[9], state_dt[10]])]
-    self.state["q"] = quaternion_product(p=[1, np.asarray([0,0,0])], q=self.state["q"], normalize=True)
-    self.state["R"] = np.asarray([state_dt[11], state_dt[12], state_dt[13]])
-    self.state["ddt_R"] = np.asarray([state_dt[14], state_dt[15], state_dt[16]])
-    self.state["d2dt2_R"] = self.space_frame_acceleration(self.state["w"], self.state["q"])
+    for idx in xrange(1, len(states)):
+      state_dt = states[idx]
+      self.state["Omega"] = np.asarray([state_dt[0], state_dt[1], state_dt[2]])
+      self.state["w"]["m1p2m3"] = state_dt[3]
+      self.state["w"]["p1p2p3"] = state_dt[4]
+      self.state["w"]["p1m2m3"] = state_dt[5]
+      self.state["w"]["m1m2p3"] = state_dt[6]
+      self.state["q"] = [state_dt[7], np.asarray([state_dt[8], state_dt[9], state_dt[10]])]
+      self.state["q"] = quaternion_product(p=[1, np.asarray([0,0,0])], q=self.state["q"], normalize=True)
+      self.state["R"] = np.asarray([state_dt[11], state_dt[12], state_dt[13]])
+      self.state["ddt_R"] = np.asarray([state_dt[14], state_dt[15], state_dt[16]])
+      self.state["d2dt2_R"] = self.space_frame_acceleration(self.state["w"], self.state["q"])
 
-    # This is already in the quad-frame. We simply rotate to the IMU frame.
-    n = self.state["Omega"]
-    n = quaternion_rotation(qv=[0, n],qr=self.config["q_offset"])[1]
+      # This is already in the quad-frame. We simply rotate to the IMU frame.
+      n = self.state["Omega"]
+      n = quaternion_rotation(qv=[0, n],qr=self.config["q_offset"])[1]
 
-    # This is specified in the space-frame, so we rotate from space->quad->IMU frame.
-    m = self.config["H"]
-    m = quaternion_rotation(qv=[0, m], qr=quaternion_inverse(self.state["q"]))[1]
-    m = quaternion_rotation(qv=[0, m], qr=self.config["q_offset"])[1]
+      # This is specified in the space-frame, so we rotate from space->quad->IMU frame.
+      m = self.config["H"]
+      m = quaternion_rotation(qv=[0, m], qr=quaternion_inverse(self.state["q"]))[1]
+      m = quaternion_rotation(qv=[0, m], qr=self.config["q_offset"])[1]
 
-    # This is calculated in the space-frame, so we rotate from space->quad->IMU frame.
-    # Aside: A prediction made here is that the IMU will always see quad-frame z-acceleration (no x,y)
-    # because it only measures acceleration relative to free-fall.
-    a = self.state["d2dt2_R"] - self.config["G"]
-    a = quaternion_rotation(qv=[0, a], qr=quaternion_inverse(self.state["q"]))[1]
-    a = quaternion_rotation(qv=[0, a], qr=self.config["q_offset"])[1]
+      # This is calculated in the space-frame, so we rotate from space->quad->IMU frame.
+      # Aside: A prediction made here is that the IMU will always see quad-frame z-acceleration (no x,y)
+      # because it only measures acceleration relative to free-fall.
+      a = self.state["d2dt2_R"] - self.config["G"]
+      a = quaternion_rotation(qv=[0, a], qr=quaternion_inverse(self.state["q"]))[1]
+      a = quaternion_rotation(qv=[0, a], qr=self.config["q_offset"])[1]
 
-    return (n, m, a, self.state["q"], self.state["R"], self.state["ddt_R"], self.state["d2dt2_R"])
+      if self.sampler is not None:
+        self.sampler.process_samples(t_s=t[idx], gyro=n, compass=m, accel=a)
+
+    return (self.state["q"], self.state["R"])
 
 # From playing with symmetry of the duty cycles (left vs right, only one on, cw
 # vs ccw), we learn the following:
@@ -342,7 +360,7 @@ class Plant(object):
 def Test_FreeFall(spin, visual=False):
   dt=0.01
   t_s = np.asarray(range(100))*dt
-  quad = Plant(dt=dt)
+  quad = Plant(dt=dt, hz=100.0)
   if spin == "z":
     u = {
       "m1p2m3" : 0.2,
@@ -378,63 +396,21 @@ def Test_FreeFall(spin, visual=False):
       "p1m2m3" : 0.0,
       "m1m2p3" : 0.0
       }
-  gyro = []
-  compass = []
-  accel = []
   orientations = []
   cm = []
-  ddt_cm = []
-  d2dt2_cm = []
   for k in xrange(len(t_s)):
-    (w, m, a, q, r, dr, ddr) = quad.evolve(u)
-    gyro.append(w)
-    compass.append(m)
-    accel.append(a)
+    (q, r) = quad.evolve(t_s[k], u)
     orientations.append(q)
     cm.append(r)
-    ddt_cm.append(dr)
-    d2dt2_cm.append(ddr)
 
   if visual:
     e0, e1, e2 = generate_body_frames(orientations)
     animate(len(t_s), e0, e1, e2, 1)
   else:
-    plt.figure()
-    plt.subplot(311)
     plt.plot(t_s, cm)
     plt.legend(["x", "y", "z"])
     plt.ylabel("m")
     plt.title("Center of Mass, Ground Truth")
-    plt.subplot(312)
-    plt.plot(t_s, ddt_cm)
-    plt.legend(["x", "y", "z"])
-    plt.ylabel("m/s")
-    plt.subplot(313)
-    plt.plot(t_s, d2dt2_cm)
-    plt.legend(["x", "y", "z"])
-    plt.ylabel("m/s^2")
-
-    # Assume the IMU-to-quad frame offset is known perfectly, through offline calibration.
-    offset = lambda v: [quaternion_rotation(qv=[0,x], qr=quaternion_inverse(quad.config["q_offset"]))[1] for x in v]
-
-    plt.figure()
-    plt.subplot(311)
-    plt.plot(t_s, offset(gyro))
-    plt.legend(["g_x", "g_y", "g_z"])
-    plt.ylabel("rad/s")
-    plt.title("Measurements")
-
-    plt.subplot(312)
-    plt.plot(t_s, offset(compass))
-    plt.legend(["m_x", "m_y", "m_z"])
-    plt.ylabel("unitless")
-
-    plt.subplot(313)
-    plt.plot(t_s, offset(accel))
-    plt.legend(["a_x", "a_y", "a_z"])
-    plt.ylabel("m/s^2")
-    plt.xlabel("s")
-
     plt.show()
 
 if __name__ == "__main__":
