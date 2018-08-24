@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 from animate import *
+from matplotlib import pyplot as plt
 from quaternions import *
 from plant import Plant
 from sampler import Sampler
@@ -45,6 +46,7 @@ class Wiring(object):
     self.t = []
     self.r = []
     self.q = []
+    self.r_est = []
 
     # Loop Iterations
     self.iterations = iterations
@@ -59,4 +61,15 @@ class Wiring(object):
       self.t.append(self.t_s)
       self.r.append(r)
       self.q.append(q)
+      self.r_est.append(self.estimator.r)
 
+  def visualize(self):
+    plt.plot(self.t, self.r)
+    plt.plot(self.t, self.r_est)
+    plt.legend(["x", "y", "z", "x_est", "y_est", "z_est"])
+    plt.show()
+
+if __name__ == "__main__":
+  wiring = Wiring()
+  wiring.simulate()
+  wiring.visualize()

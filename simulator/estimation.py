@@ -73,8 +73,8 @@ class Estimator(object):
     # Our estimate of the rotation of the body frame relative to the inertial frame.
     self.q = [1, np.asarray([0,0,0])]
     self.ddt_q = [0, np.asarray([0,0,0])]
-    self.r = np.asarray([0,0,0])
-    self.ddt_r = np.asarray([0,0,0])
+    self.r = np.asarray([0.0, 0.0, 0.0])
+    self.ddt_r = np.asarray([0.0,0.0,0.0])
 
     # A buffer of samples that we synchronize and resample at 100Hz
     # TODO For now, we are just assuming we get perfect 100Hz data.
@@ -141,7 +141,7 @@ class Estimator(object):
     self.ddt_q = dq
     dq = [dq[0]*dt, dq[1]*dt]
 
-    q = [self.q[0] + (self.ddt_q[0]*dt), self.q[1] + (ddt_q[1] * dt)]
+    q = [self.q[0] + (self.ddt_q[0]*dt), self.q[1] + (self.ddt_q[1] * dt)]
     self.q = [e / quaternion_norm(q)  for e in q]
 
     # Estimate our position and velocity. Bear in mind we currently have no
@@ -149,4 +149,12 @@ class Estimator(object):
     # to keep drift reasonable. We have no expectation of accuracy. The first
     # controller goal is attitude stabilization.
 
-    # TODO Use the latest positional estimate and integrate it to get ddt_r and r.
+    d2dt2_r = quaternion_rotation(qv=[0, a_b], qr=self.q)[1]
+    d2dt2_r += np.asarray([0,0,-9.8])
+    self.r += self.ddt_r*dt
+    self.ddt_r += d2dt2_r*dt
+
+    # Tell the controller we have an updated state estimate.\
+    if self.controller is not None:
+      w_eff = quaternion_times_scalar(scalar=2, quaternion=quaternion_product(quaternion_inverse(self.q), self.ddt_q, False))[1]
+      self.controller.process_state(self.t_s, self.q, w_eff, self.r, self.ddt_r)
