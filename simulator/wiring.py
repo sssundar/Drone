@@ -64,12 +64,34 @@ class Wiring(object):
       self.r_est.append(copy.deepcopy(self.estimator.r))
 
   def visualize(self):
-    plt.plot(self.t, self.r)
-    plt.plot(self.t, self.r_est)
-    plt.legend(["x", "y", "z", "x_est", "y_est", "z_est"])
+    x = lambda series: [v[0] for v in series]
+    y = lambda series: [v[1] for v in series]
+    z = lambda series: [v[2] for v in series]
+
+    plt.subplot(311)
+    plt.plot(self.t, x(self.r), 'k-')
+    plt.plot(self.t, x(self.r_est), 'k--')
+    plt.legend(["x", "x_est"])
+    plt.xlabel("s")
+    plt.ylabel("m")
+
+    plt.subplot(312)
+    plt.plot(self.t, y(self.r), 'k-')
+    plt.plot(self.t, y(self.r_est), 'k--')
+    plt.legend(["y", "y_est"])
+    plt.xlabel("s")
+    plt.ylabel("m")
+
+    plt.subplot(313)
+    plt.plot(self.t, z(self.r), 'k-')
+    plt.plot(self.t, z(self.r_est), 'k--')
+    plt.legend(["z", "z_est"])
+    plt.xlabel("s")
+    plt.ylabel("m")
+
     plt.show()
 
 if __name__ == "__main__":
-  wiring = Wiring()
+  wiring = Wiring(iterations=200)
   wiring.simulate()
   wiring.visualize()

@@ -57,24 +57,17 @@ def gradient_f(q, a, b, m):
 class Estimator(object):
   def __init__(self, q_offset=[1, np.asarray([0,0,0])], controller=None):
     self.controller = controller
+
+    #######################
+    # Offline Calibration #
+    #######################
+
     self.q_offset = q_offset
     self.offset_correction = lambda v: quaternion_rotation(qv=[0,v], qr=quaternion_inverse(self.q_offset))[1]
 
-    # Scale should match the sampling noise configured in wiring.py
-    # Note zeta cannot compensate for beta.
-    # Note beta can compensate for bias if it is large enough.
-    #   Then... you'll jitter if there's mag/acc noise. You don't want to make beta unnecessarily large.
-    self.beta = np.pi/2   # ~18 dps spread iid in all axes. If this is zero we're just integrating without any orientation compensation
-    self.zeta = np.pi/3    # ~60 dps bias error iid in all axes. If this is zero we don't use gyro bias compensation.
-
-    # Bias Accumulator
-    self.int_we = np.asarray([0.0,0.0,0.0])
-
-    # Our estimate of the rotation of the body frame relative to the inertial frame.
-    self.q = [1, np.asarray([0,0,0])]
-    self.ddt_q = [0, np.asarray([0,0,0])]
-    self.r = np.asarray([0.0, 0.0, 0.0])
-    self.ddt_r = np.asarray([0.0,0.0,0.0])
+    ###################
+    # Synchronization #
+    ###################
 
     # A buffer of samples that we synchronize and resample at 100Hz
     # TODO For now, we are just assuming we get perfect 100Hz data.
@@ -86,6 +79,36 @@ class Estimator(object):
     self.accel = None
     self.t_previous_s = 0.0
     self.t_s = 0.0
+
+    #######################
+    # Attitude Estimation #
+    #######################
+
+    # Scale should match the sampling noise configured in wiring.py
+    # Note zeta cannot compensate for beta.
+    # Note beta can compensate for bias if it is large enough.
+    #   Then... you'll jitter if there's mag/acc noise. You don't want to make beta unnecessarily large.
+    self.beta = np.pi/2   # ~18 dps spread iid in all axes. If this is zero we're just integrating without any orientation compensation
+    self.zeta = np.pi/3    # ~60 dps bias error iid in all axes. If this is zero we don't use gyro bias compensation.
+
+    # Bias Accumulator
+    self.int_we = np.asarray([0.0,0.0,0.0])
+
+    #############################
+    # Dead Reckoning Heuristics #
+    #############################
+
+    # None, currently.
+
+    ##########
+    # Output #
+    ##########
+
+    # Our estimate of the rotation of the body frame relative to the inertial frame.
+    self.q = [1, np.asarray([0,0,0])]
+    self.ddt_q = [0, np.asarray([0,0,0])]
+    self.r = np.asarray([0.0, 0.0, 0.0])
+    self.ddt_r = np.asarray([0.0,0.0,0.0])
     return
 
   def passthrough(self, t_s):
@@ -157,7 +180,7 @@ class Estimator(object):
     self.r += self.ddt_r*dt
     self.ddt_r += d2dt2_r*dt
 
-    # Tell the controller we have an updated state estimate.\
+    # Tell the controller we have an updated state estimate.
     if self.controller is not None:
       w_eff = quaternion_times_scalar(scalar=2, quaternion=quaternion_product(quaternion_inverse(self.q), self.ddt_q, False))[1]
       self.controller.process_state(self.t_s, self.q, w_eff, self.r, self.ddt_r)
