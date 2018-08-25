@@ -1,4 +1,4 @@
-import sys
+import sys, copy
 import numpy as np
 from animate import *
 from matplotlib import pyplot as plt
@@ -7,6 +7,7 @@ from plant import Plant
 from sampler import Sampler
 from estimation import Estimator
 from controller import Controller
+import pdb
 
 class Wiring(object):
 
@@ -57,11 +58,10 @@ class Wiring(object):
       u = self.controller.get_duty_cycles()
       (q, r) = self.plant.evolve(self.t_s, u)
       self.t_s += self.dt
-
       self.t.append(self.t_s)
       self.r.append(r)
       self.q.append(q)
-      self.r_est.append(self.estimator.r)
+      self.r_est.append(copy.deepcopy(self.estimator.r))
 
   def visualize(self):
     plt.plot(self.t, self.r)

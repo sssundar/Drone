@@ -97,16 +97,19 @@ class Estimator(object):
       self.have_received_accel = False
 
   def process_gyro(self, t_s, sample):
+    # Make sure you copy the sample (when you do this for real) so the reference is clean.
     self.have_received_gyro = True
     self.gyro = self.offset_correction(sample)
     self.passthrough(t_s)
 
   def process_compass(self, t_s, sample):
+    # Make sure you copy the sample (when you do this for real) so the reference is clean.
     self.have_received_compass = True
     self.compass = self.offset_correction(sample)
     self.passthrough(t_s)
 
   def process_accel(self, t_s, sample):
+    # Make sure you copy the sample (when you do this for real) so the reference is clean.
     self.have_received_accel = True
     self.accel = self.offset_correction(sample)
     self.passthrough(t_s)
