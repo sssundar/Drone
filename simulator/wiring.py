@@ -42,12 +42,17 @@ class Wiring(object):
     self.sampler = Sampler(output_hz=output_hz, noise=noise, estimator=self.estimator)
     self.plant = Plant(dt=self.dt, hz=input_hz, sampler=self.sampler, symmetric=True)
 
-    # Trajectory
+    # Simulation Time
     self.t_s = 0
+
+    # Trajectory - Truth
     self.t = []
     self.r = []
     self.q = []
+
+    # Trajectory - Estimated
     self.r_est = []
+    self.q_est = []
 
     # Loop Iterations
     self.iterations = iterations
@@ -62,8 +67,14 @@ class Wiring(object):
       self.r.append(r)
       self.q.append(q)
       self.r_est.append(copy.deepcopy(self.estimator.r))
+      self.q_est.append(copy.deepcopy(self.estimator.q))
 
-  def visualize(self):
+  def visualize_chassis(self):
+    gt0, gt1, gt2 = generate_body_frames(self.q)
+    est0, est1, est2 = generate_body_frames(self.q_est)
+    compare(len(self.t), est0, est1, est2, gt0, gt1, gt2, 1)
+
+  def visualize_cm(self):
     x = lambda series: [v[0] for v in series]
     y = lambda series: [v[1] for v in series]
     z = lambda series: [v[2] for v in series]
@@ -92,6 +103,9 @@ class Wiring(object):
     plt.show()
 
 if __name__ == "__main__":
-  wiring = Wiring(iterations=200)
+  wiring = Wiring(iterations=50)
   wiring.simulate()
-  wiring.visualize()
+  if (len(sys.argv) >= 2) and (sys.argv[1] == 'chassis'):
+    wiring.visualize_chassis()
+  else:
+    wiring.visualize_cm()

@@ -3,10 +3,10 @@ import numpy as np
 class Controller(object):
   def __init__(self):
     self.duty_cycles = {
-      "m1p2m3" : 0.50,
-      "p1p2p3" : 0.25,
-      "p1m2m3" : 0.25,
-      "m1m2p3" : 0.25
+      "m1p2m3" : 0.49+0.01+0.01,
+      "p1p2p3" : 0.49+0.01,
+      "p1m2m3" : 0.49+0.01,
+      "m1m2p3" : 0.49
     }
     self.reference = {
       "r" : np.asarray([0, 0, 0]),

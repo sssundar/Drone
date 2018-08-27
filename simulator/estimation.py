@@ -89,7 +89,7 @@ class Estimator(object):
     # Note beta can compensate for bias if it is large enough.
     #   Then... you'll jitter if there's mag/acc noise. You don't want to make beta unnecessarily large.
     self.beta = np.pi/2   # ~18 dps spread iid in all axes. If this is zero we're just integrating without any orientation compensation
-    self.zeta = np.pi/3    # ~60 dps bias error iid in all axes. If this is zero we don't use gyro bias compensation.
+    self.zeta = np.pi/3   # ~60 dps bias error iid in all axes. If this is zero we don't use gyro bias compensation.
 
     # Bias Accumulator
     self.int_we = np.asarray([0.0,0.0,0.0])
