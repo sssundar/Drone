@@ -34,13 +34,14 @@ class Wiring(object):
     }
 
     # Estimator Configuration
-    # Assume the IMU-to-quad frame offset is known perfectly, through offline calibration.
+    # Assume the IMU-to-quad frame offset and magnetic field are known perfectly, through offline calibration.
     q_offset = axis_angle_to_quaternion(np.asarray([1,0,0]), -np.pi/180)
+    H = np.asarray([0.5,0,np.sqrt(3)/2])
 
     self.controller = Controller()
-    self.estimator = Estimator(q_offset=q_offset, controller=self.controller)
+    self.estimator = Estimator(m=H, q_offset=q_offset, controller=self.controller)
     self.sampler = Sampler(output_hz=output_hz, noise=noise, estimator=self.estimator)
-    self.plant = Plant(dt=self.dt, hz=input_hz, sampler=self.sampler, symmetric=True)
+    self.plant = Plant(dt=self.dt, hz=input_hz, H=H, sampler=self.sampler, symmetric=True)
 
     # Simulation Time
     self.t_s = 0

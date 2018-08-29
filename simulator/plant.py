@@ -32,10 +32,13 @@ class Plant(object):
   # @param[in]  self       A Plant object
   # @param[in]  dt         The time-step to simulate, in seconds
   # @param[in]  hz         The frequency to sample at, in the time-step
+  # @param[in]  H          A numpy 3-vector representing a unitless, normalized
+  #                        magnetic field vector when the quad is aligned with
+  #                        the space frame.
   # @param[in]  sampler    A Sampler object to feed perfect samples at hz
   # @param[in]  symmetric  Is this meant to be a fully symmetric quadcopter?
   #
-  def __init__(self, dt, hz, sampler=None, symmetric=True):
+  def __init__(self, dt, hz, H=np.asarray([0.5,0,np.sqrt(3)/2]), sampler=None, symmetric=True):
     # Quad Frame Definition
     #
     # Bodies 1,2,3,4 are the four propellor-shaft systems rigidly attached
@@ -118,7 +121,7 @@ class Plant(object):
     #   When in free-fall, the IMU will read 0, which is equal to a-G if a = G.
     #   So, at all times, the IMU reads the net acceleration minus gravity (-9.8z).
     self.config["G"] = np.asarray([0,0,-9.8]) # m/s^2
-    self.config["H"] = np.asarray([0.5,0,np.sqrt(3)/2]) # Normalized, unitless.
+    self.config["H"] = H / vector_norm(H) # Normalized, unitless.
 
     # Motor Drive Configuration. See Drone/motor/quadratic_drag.py.
     # Configured to match measurements: O(300ms) to w steady-state at duty cycles in [0.1,1].
