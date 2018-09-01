@@ -60,6 +60,11 @@ def animate(n_vectors, q_e0, q_e1, q_e2, decimator, where="images"):
   count = 0
 
   for n in xrange(n_vectors):
+    percent = (100.0*n)/n_vectors
+    complete = "%0.3f%%" % percent
+    sys.stdout.write('\rAnimation ' + complete + " complete.")
+    sys.stdout.flush()
+
     if (n % decimator) != 0:
       continue
 
