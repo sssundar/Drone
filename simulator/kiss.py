@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from animate import generate_body_frames, animate
 import pdb
 
-def simulate():
+def simulate(visualize=True):
   # Simulation Configuraiton
   f_hz = 100.0
   dt_s = 1.0 / f_hz
@@ -98,8 +98,13 @@ def simulate():
     u_dt = proportional + derivative
     us.append(u_dt)
 
-  e0, e1, e2 = generate_body_frames(qs)
-  animate(len(qs), e0, e1, e2, 5)
+  if visualize:
+    e0, e1, e2 = generate_body_frames(qs)
+    animate(len(qs), e0, e1, e2, 5)
+  else:
+    plt.plot(np.asarray(range(n+1))*dt_s, us)
+    plt.legend(["e1", "e2", "e3"])
+    plt.show()
 
 if __name__ == "__main__":
-  simulate()
+  simulate(visualize=True)

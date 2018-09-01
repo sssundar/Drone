@@ -41,23 +41,33 @@ Add in zero mean accel noise (5%)
     we then want to converge quickly if we get a better measurement.
 
 Probably worth refactoring here to move us to an iterative computation model instead of an operate on whole-time-series model. To better simulate COM acceleration. May as well write the simulator now so you can put in, say, an oscillating net torque.
+  Done! See Drone/simulator.
 
 Write out a simple drone mechanics model
-Simulate it (torques in free_body input step-by-step instead as identically zero)
+  Done! See Drone/simulator for derivation and testing.
 
-Add in low frequency accel oscillation on the scale of gravity. Doesn't matter if it's physically relevant. The swing is the key.
-  Will need to update "a_i" = direction of gravity to "a_i" = acceleration felt by object.
+Simulate it (torques in free_body input step-by-step instead as identically zero)
+  Done! See Drone/simulator for testing.
 
 Show me inertial drift (does need to be animated) to understand the delay, error timescale and the error scale. You can update the base point of the vectors to do this.
+  Done! See Drone/simulator. O(1s) yields 0.5-2 meter drift.
+
+Simulate a PD controller for a simplified model where you have perfect control over torque and perfect sampling.
+  Done! See Drone/simulator/kiss.py.
+
+Simulate a PID controller with kp >> kd >>> ki and torque-through-motor-drive.
 
 Add in time jitter, buffering delay, and interpolation error
 
-Linearize the model about the horizontal. Design your PID controller.
-Simulate the PID controller.
-
-Next -- Push for first flight. KISS.
-Build!
-  Mechanical (purchase)
+KISS. Push for first flight to verify assumptions with data.
+  Mechanical (3D print for our batteries).
   Electrical (drive, safety, 2s motors -> bom -> pcb)
   FW (drivers, controller, logger, tools)
 
+Linearize the full model about the horizontal. Design your PID controller now that the model is trusted.
+
+Add heuristics for hovering if possible.
+
+Write it up!
+
+Think about what you want to do next.
