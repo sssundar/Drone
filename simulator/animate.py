@@ -105,6 +105,11 @@ def compare(n_vectors, r_e0, r_e1, r_e2, q_e0, q_e1, q_e2, decimator, where="ima
   line_collections = None
 
   for n in xrange(n_vectors):
+    percent = (100.0*n)/n_vectors
+    complete = "%0.3f%%" % percent
+    sys.stdout.write('\rAnimation ' + complete + " complete.")
+    sys.stdout.flush()
+
     if (n % decimator) != 0:
       continue
 

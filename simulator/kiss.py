@@ -107,4 +107,6 @@ def simulate(visualize=True):
     plt.show()
 
 if __name__ == "__main__":
+  # Install ImageMagick on Ubunut then, after running this script, go to 'images' and run
+  # convert -delay 0.05 -loop 0 *png stabilization.gif
   simulate(visualize=True)
