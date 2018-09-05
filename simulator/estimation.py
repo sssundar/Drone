@@ -145,7 +145,11 @@ class Estimator(object):
     self.t_previous_s = self.t_s
 
     # Estimate our orientation and rate of change of orientation
-    a_hat = a_b / vector_norm(a_b)
+    a_norm = vector_norm(a_b)
+    if a_norm > 1E-9:
+      a_hat = a_b / vector_norm(a_b)
+    else:
+      a_hat = np.array([0.0, 0.0, 1.0])
     b = None
     m = None
     if self.m is not None:

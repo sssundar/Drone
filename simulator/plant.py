@@ -32,13 +32,14 @@ class Plant(object):
   # @param[in]  self       A Plant object
   # @param[in]  dt         The time-step to simulate, in seconds
   # @param[in]  hz         The frequency to sample at, in the time-step
+  # @param[in]  q0         The initial orientation quaternion [r, v] with v a numpy 3-vector
   # @param[in]  H          A numpy 3-vector representing a unitless, normalized
   #                        magnetic field vector when the quad is aligned with
   #                        the space frame.
   # @param[in]  sampler    A Sampler object to feed perfect samples at hz
   # @param[in]  symmetric  Is this meant to be a fully symmetric quadcopter?
   #
-  def __init__(self, dt, hz, H=np.asarray([0.5,0,np.sqrt(3)/2]), sampler=None, symmetric=True):
+  def __init__(self, dt, hz, q0=[1.0, np.asarray([0,0,0])], H=np.asarray([0.5,0,np.sqrt(3)/2]), sampler=None, symmetric=True):
     # Quad Frame Definition
     #
     # Bodies 1,2,3,4 are the four propellor-shaft systems rigidly attached
@@ -167,7 +168,7 @@ class Plant(object):
                         "p1m2m3" : 0.0,
                         "m1m2p3" : 0.0
                         } # rad/s propellor angular velocity
-    self.state["q"] = [1.0, np.asarray([0,0,0])] # quaternion ([r, v] with v a numpy 3-vector) representing quad-to-space transformation
+    self.state["q"] = q0 # quaternion ([r, v] with v a numpy 3-vector) representing quad-to-space transformation
     self.state["R"] = np.asarray([0,0,0]) # CM of quad, meters
     self.state["ddt_R"] = np.asarray([0,0,0]) # d/dt of CM of quad, meters/s
     self.state["d2dt2_R"] = np.asarray([0,0,0]) # d2/dt2 of CM of quad, meters/s^2

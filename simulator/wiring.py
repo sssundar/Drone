@@ -33,6 +33,11 @@ class Wiring(object):
       "accel" : [0.0, 0.0]
     }
 
+    # Initial Conditions
+    q0 = np.array([1,1,-1])
+    q0 = q0 / vector_norm(q0)
+    q0 = axis_angle_to_quaternion(q0, np.pi/2)
+
     # Estimator Configuration
     # Assume the IMU-to-quad frame offset and magnetic field are known perfectly, through offline calibration.
     q_offset = axis_angle_to_quaternion(np.asarray([1,0,0]), -np.pi/180)
@@ -41,7 +46,7 @@ class Wiring(object):
     self.controller = Controller()
     self.estimator = Estimator(m=H, q_offset=q_offset, controller=self.controller)
     self.sampler = Sampler(output_hz=output_hz, noise=noise, estimator=self.estimator)
-    self.plant = Plant(dt=self.dt, hz=input_hz, H=H, sampler=self.sampler, symmetric=True)
+    self.plant = Plant(dt=self.dt, hz=input_hz, q0=q0, H=H, sampler=self.sampler, symmetric=True)
 
     # Simulation Time
     self.t_s = 0
@@ -55,20 +60,30 @@ class Wiring(object):
     self.r_est = []
     self.q_est = []
 
+    # Controller Output
+    self.u = []
+
     # Loop Iterations
     self.iterations = iterations
     return
 
   def simulate(self):
+    u = self.controller.get_duty_cycles()
     for idx in xrange(self.iterations):
-      u = self.controller.get_duty_cycles()
+      percent = (100.0*idx)/self.iterations
+      complete = "%0.1f%%" % percent
+      sys.stdout.write('\rSimulation ' + complete + " complete.")
+      sys.stdout.flush()
+
       (q, r) = self.plant.evolve(self.t_s, u)
+      u = self.controller.get_duty_cycles()
       self.t_s += self.dt
       self.t.append(self.t_s)
       self.r.append(r)
       self.q.append(q)
       self.r_est.append(copy.deepcopy(self.estimator.r))
       self.q_est.append(copy.deepcopy(self.estimator.q))
+      self.u.append(copy.deepcopy(u))
 
   def visualize_chassis(self):
     gt0, gt1, gt2 = generate_body_frames(self.q)
@@ -103,10 +118,27 @@ class Wiring(object):
 
     plt.show()
 
+  def visualize_control(self):
+    series = {}
+    for k in self.u[0].keys():
+      series[k] = []
+      for u in self.u:
+        series[k].append(u[k])
+
+    legend = series.keys()
+    for k in legend:
+      plt.plot(self.t, series[k])
+    plt.xlabel("s")
+    plt.ylabel("duty")
+    plt.legend(legend)
+    plt.show()
+
 if __name__ == "__main__":
   wiring = Wiring(iterations=50)
   wiring.simulate()
   if (len(sys.argv) >= 2) and (sys.argv[1] == 'chassis'):
     wiring.visualize_chassis()
+  elif (len(sys.argv) >= 2) and (sys.argv[1] == 'control'):
+    wiring.visualize_control()
   else:
     wiring.visualize_cm()
