@@ -36,7 +36,7 @@ class Wiring(object):
     # Initial Conditions
     q0 = np.array([1,1,-1])
     q0 = q0 / vector_norm(q0)
-    q0 = axis_angle_to_quaternion(q0, np.pi/2)
+    q0 = axis_angle_to_quaternion(q0, np.pi/30)
 
     # Estimator Configuration
     # Assume the IMU-to-quad frame offset and magnetic field are known perfectly, through offline calibration.
@@ -134,9 +134,11 @@ class Wiring(object):
     plt.show()
 
 if __name__ == "__main__":
-  wiring = Wiring(iterations=50)
+  wiring = Wiring(iterations=200)
   wiring.simulate()
   if (len(sys.argv) >= 2) and (sys.argv[1] == 'chassis'):
+    # Install ImageMagick on Ubunut then, after running this script, go to 'images' and run
+    # convert -delay 0.05 -loop 0 *png stabilization.gif
     wiring.visualize_chassis()
   elif (len(sys.argv) >= 2) and (sys.argv[1] == 'control'):
     wiring.visualize_control()

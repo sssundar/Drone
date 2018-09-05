@@ -72,6 +72,8 @@ class Controller(object):
 
     torque = proportional + derivative
 
+    print torque
+
     u = np.array([0.0, 0.0, 0.0, 0.0])
     u[0] = torque[0] / self.e1_THRUST_MOMENT
     u[1] = torque[2] / self.e2_THRUST_MOMENT
