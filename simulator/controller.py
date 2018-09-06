@@ -38,8 +38,8 @@ class Controller(object):
 
     # Scaling Factors
     self.MAX_DRIVE_TORQUE = 0.002
-    self.e2_THRUST_MOMENT = -0.01
-    self.e1_THRUST_MOMENT = -0.01
+    self.e2_THRUST_MOMENT = 0.01
+    self.e1_THRUST_MOMENT = 0.01
     self.BASE_DUTY = 2.0
 
     # PID Configuration
@@ -72,11 +72,9 @@ class Controller(object):
 
     torque = proportional + derivative
 
-    print torque
-
     u = np.array([0.0, 0.0, 0.0, 0.0])
     u[0] = torque[0] / self.e1_THRUST_MOMENT
-    u[1] = torque[2] / self.e2_THRUST_MOMENT
+    u[1] = torque[1] / self.e2_THRUST_MOMENT
     u[2] = torque[2] / self.MAX_DRIVE_TORQUE
     u[3] = self.BASE_DUTY
     d = np.dot(self.D_inv, u)[0]

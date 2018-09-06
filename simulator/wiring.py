@@ -16,7 +16,7 @@ class Wiring(object):
   #
   # @param[in]  self  A Wiring object
   #
-  def __init__(self, iterations=100):
+  def __init__(self, iterations=100, decimation=1):
     # Sampling Configuration
     base_output_hz = 100.0
     n_oversampling = 10
@@ -65,6 +65,7 @@ class Wiring(object):
 
     # Loop Iterations
     self.iterations = iterations
+    self.decimation = decimation
     return
 
   def simulate(self):
@@ -88,7 +89,7 @@ class Wiring(object):
   def visualize_chassis(self):
     gt0, gt1, gt2 = generate_body_frames(self.q)
     est0, est1, est2 = generate_body_frames(self.q_est)
-    compare(len(self.t), est0, est1, est2, gt0, gt1, gt2, 1)
+    compare(len(self.t), est0, est1, est2, gt0, gt1, gt2, self.decimation)
 
   def visualize_cm(self):
     x = lambda series: [v[0] for v in series]
@@ -134,10 +135,10 @@ class Wiring(object):
     plt.show()
 
 if __name__ == "__main__":
-  wiring = Wiring(iterations=200)
+  wiring = Wiring(iterations=600, decimation=10)
   wiring.simulate()
   if (len(sys.argv) >= 2) and (sys.argv[1] == 'chassis'):
-    # Install ImageMagick on Ubunut then, after running this script, go to 'images' and run
+    # Install ImageMagick on Ubuntu then, after running this script, go to 'images' and run
     # convert -delay 0.05 -loop 0 *png stabilization.gif
     wiring.visualize_chassis()
   elif (len(sys.argv) >= 2) and (sys.argv[1] == 'control'):
