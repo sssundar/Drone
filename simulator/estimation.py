@@ -52,7 +52,8 @@ def J_gb(q, b):
   return np.concatenate((J_g(q), J_b(q, b)), axis=0)
 
 def gradient_f(q, a, b, m):
-  return np.array(np.dot(np.transpose(J_gb(q, b)), f_gb(q, a, b, m)))[0]
+  return np.array(np.dot(np.transpose(J_b(q, b)), f_b(q, b, m)))[0]
+  # return np.array(np.dot(np.transpose(J_gb(q, b)), f_gb(q, a, b, m)))[0]
 
 
 class Estimator(object):
@@ -90,7 +91,7 @@ class Estimator(object):
     # Note zeta cannot compensate for beta.
     # Note beta can compensate for bias if it is large enough.
     #   Then... you'll jitter if there's mag/acc noise. You don't want to make beta unnecessarily large.
-    self.beta = np.pi/100 # ~2 dps error in all axes. The idea is to trust the gyro in the near-term and trust the proper acceleration vector (on average, gravity, if we're mostly horizontal, so tied to our controller) and compass heading (independent of our controller) in the long term.
+    self.beta = np.pi/100 # np.pi/100 # ~2 dps error in all axes. The idea is to trust the gyro in the near-term and trust the proper acceleration vector (on average, gravity, if we're mostly horizontal, so tied to our controller) and compass heading (independent of our controller) in the long term.
     self.zeta = np.pi/10   # ~18 dps bias error iid in all axes. If this is zero we don't use gyro bias compensation.
 
     # Bias Accumulator

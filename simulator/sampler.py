@@ -38,6 +38,20 @@ class Sampler(object):
     if t_s >= self.t_target:
       self.t_target += 0.01
       if self.estimator is not None:
-        self.estimator.process_gyro(t_s, gyro)
-        self.estimator.process_compass(t_s, compass)
-        self.estimator.process_accel(t_s, accel)
+        sigma = np.eye(3) * ((self.noise["gyro"][1]*vector_norm(gyro))**2)
+        mu = np.zeros([1,3])[0]
+        mu += self.noise["gyro"][0]
+        disturbance = np.random.multivariate_normal(mean=mu, cov=sigma)
+        self.estimator.process_gyro(t_s, gyro + disturbance)
+
+        sigma = np.eye(3) * ((self.noise["compass"][1]*vector_norm(compass))**2)
+        mu = np.zeros([1,3])[0]
+        mu += self.noise["compass"][0]
+        disturbance = np.random.multivariate_normal(mean=mu, cov=sigma)
+        self.estimator.process_compass(t_s, compass + disturbance)
+
+        sigma = np.eye(3) * ((self.noise["accel"][1]*vector_norm(accel))**2)
+        mu = np.zeros([1,3])[0]
+        mu += self.noise["accel"][0]
+        disturbance = np.random.multivariate_normal(mean=mu, cov=sigma)
+        self.estimator.process_accel(t_s, accel + disturbance)

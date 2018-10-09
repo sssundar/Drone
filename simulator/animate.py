@@ -118,7 +118,7 @@ def compare(n_vectors, r_e0, r_e1, r_e2, q_e0, q_e1, q_e2, decimator, where="ima
       for col in line_collections:
         ax.collections.remove(col)
 
-    line_collections = draw_body(ax, [r_e0[n], r_e1[n], r_e2[n], q_e0[n], q_e1[n], q_e2[n]], ["r", "g", "b", "r", "g", "b"])
+    line_collections = draw_body(ax, [r_e0[n], r_e1[n], r_e2[n], q_e0[n], q_e1[n], q_e2[n]], ["r", "g", "b", "c", "y", "k"])
 
     plt.savefig('%s/Frame%08i.png' % (where, n))
     plt.draw()

@@ -28,9 +28,9 @@ class Wiring(object):
       "accel" : 1.0*base_output_hz
     }
     noise = {
-      "gyro" : [0.0, 0.0],
-      "compass" : [0.0, 0.0],
-      "accel" : [0.0, 0.0]
+      "gyro" : [np.pi/200, 0.05],
+      "compass" : [0.0, 0.01],
+      "accel" : [0.0, 0.05]
     }
 
     # Initial Conditions
