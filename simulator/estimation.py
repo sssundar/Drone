@@ -52,8 +52,8 @@ def J_gb(q, b):
   return np.concatenate((J_g(q), J_b(q, b)), axis=0)
 
 def gradient_f(q, a, b, m):
-  return np.array(np.dot(np.transpose(J_b(q, b)), f_b(q, b, m)))[0]
-  # return np.array(np.dot(np.transpose(J_gb(q, b)), f_gb(q, a, b, m)))[0]
+  # return np.array(np.dot(np.transpose(J_b(q, b)), f_b(q, b, m)))[0]
+  return np.array(np.dot(np.transpose(J_gb(q, b)), f_gb(q, a, b, m)))[0]
 
 
 class Estimator(object):
@@ -91,7 +91,7 @@ class Estimator(object):
     # Note zeta cannot compensate for beta.
     # Note beta can compensate for bias if it is large enough.
     #   Then... you'll jitter if there's mag/acc noise. You don't want to make beta unnecessarily large.
-    self.beta = np.pi/100 # np.pi/100 # ~2 dps error in all axes. The idea is to trust the gyro in the near-term and trust the proper acceleration vector (on average, gravity, if we're mostly horizontal, so tied to our controller) and compass heading (independent of our controller) in the long term.
+    self.beta = np.pi/100  # ~2 dps error in all axes. The idea is to trust the gyro in the near-term and trust the proper acceleration vector (on average, gravity, if we're mostly horizontal, so tied to our controller) and compass heading (independent of our controller) in the long term.
     self.zeta = np.pi/10   # ~18 dps bias error iid in all axes. If this is zero we don't use gyro bias compensation.
 
     # Bias Accumulator
@@ -203,7 +203,7 @@ class Estimator(object):
 
 # This test passed on 8/29/2018. This means given perfect samples (time, accuracy) from the IMU frame, this Estimator is the equivalent of that in rotation/madgwick_complementary_filter/state_estimation.py.
 # The only reasons we might see differences in output are:
-#  In that script, we treated the body as though it were held by a string. There was always a gravity vector, there was no concept of "measuring proper aceleration"
+#  In that script, we treated the body as though it were held by a string. There was always a gravity vector, there was no concept of "measuring proper acceleration"
 #  In that script, for the same reason, we used magnetic distortion compensation, as the acceleration was a stronger attitude source.
 #  In that script, we had no time jitter or synchronization delay.
 #  In that script, we weighted Beta and Zeta so they dominated the estimate (as opposed to letting the gyro win in the short term)

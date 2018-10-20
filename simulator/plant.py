@@ -32,14 +32,18 @@ class Plant(object):
   # @param[in]  self       A Plant object
   # @param[in]  dt         The time-step to simulate, in seconds
   # @param[in]  hz         The frequency to sample at, in the time-step
-  # @param[in]  q0         The initial orientation quaternion [r, v] with v a numpy 3-vector
+  # @param[in]  q0         The initial orientation quaternion [r, v] with v a
+  #                        numpy 3-vector
   # @param[in]  H          A numpy 3-vector representing a unitless, normalized
   #                        magnetic field vector when the quad is aligned with
   #                        the space frame.
   # @param[in]  sampler    A Sampler object to feed perfect samples at hz
   # @param[in]  symmetric  Is this meant to be a fully symmetric quadcopter?
+  # @param[in]  know_down  Are we assuming perfect knowledge of 'down' via image
+  #                        processing/ML? Are we using proper acceleration to
+  #                        magically give us 'down'?
   #
-  def __init__(self, dt, hz, q0=[1.0, np.asarray([0,0,0])], H=np.asarray([0.5,0,np.sqrt(3)/2]), sampler=None, symmetric=True):
+  def __init__(self, dt, hz, q0=[1.0, np.asarray([0,0,0])], H=np.asarray([0.5,0,np.sqrt(3)/2]), sampler=None, symmetric=True, know_down=True):
     # Quad Frame Definition
     #
     # Bodies 1,2,3,4 are the four propellor-shaft systems rigidly attached
@@ -121,6 +125,7 @@ class Plant(object):
     #   When accelerating downwards, the IMU will read a-G, for the same reason.
     #   When in free-fall, the IMU will read 0, which is equal to a-G if a = G.
     #   So, at all times, the IMU reads the net acceleration minus gravity (-9.8z).
+    self.know_down = know_down
     self.config["G"] = np.asarray([0,0,-9.8]) # m/s^2
     self.config["H"] = H / vector_norm(H) # Normalized, unitless.
 
@@ -330,9 +335,13 @@ class Plant(object):
       m = quaternion_rotation(qv=[0, m], qr=self.config["q_offset"])[1]
 
       # This is calculated in the space-frame, so we rotate from space->quad->IMU frame.
-      # Aside: A prediction made here is that the IMU will always see quad-frame z-acceleration (no x,y)
-      # because it only measures acceleration relative to free-fall.
-      a = self.state["d2dt2_R"] - self.config["G"]
+      if not self.know_down:
+        # Aside: A prediction made here is that the IMU will always see quad-frame z-acceleration (no x,y)
+        # because it only measures acceleration relative to free-fall.
+        a = self.state["d2dt2_R"] - self.config["G"]
+      else:
+        # Let us suppose instead that we use image processing to provide an estimate of 'down'
+        a = -self.config["G"]
       a = quaternion_rotation(qv=[0, a], qr=quaternion_inverse(self.state["q"]))[1]
       a = quaternion_rotation(qv=[0, a], qr=self.config["q_offset"])[1]
 

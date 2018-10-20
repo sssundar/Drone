@@ -138,7 +138,7 @@ class Wiring(object):
     plt.show()
 
 if __name__ == "__main__":
-  wiring = Wiring(iterations=600, decimation=10)
+  wiring = Wiring(iterations=1200, decimation=10)
   wiring.simulate()
   if (len(sys.argv) >= 2) and (sys.argv[1] == 'chassis'):
     # Install ImageMagick on Ubuntu then, after running this script, go to 'images' and run
