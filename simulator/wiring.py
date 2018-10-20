@@ -19,7 +19,7 @@ class Wiring(object):
   def __init__(self, iterations=100, decimation=1):
     # Sampling Configuration
     base_output_hz = 100.0
-    n_oversampling = 10
+    n_oversampling = 1
     input_hz = base_output_hz*n_oversampling
     self.dt = 1.0/base_output_hz
     output_hz = {
@@ -28,7 +28,7 @@ class Wiring(object):
       "accel" : 1.0*base_output_hz
     }
     noise = {
-      "gyro" : [np.pi/200, 0.05],
+      "gyro" : [np.pi/20, 0.05],
       "compass" : [0.0, 0.01],
       "accel" : [0.0, 0.05]
     }
@@ -71,25 +71,28 @@ class Wiring(object):
   def simulate(self):
     u = self.controller.get_duty_cycles()
     for idx in xrange(self.iterations):
-      percent = (100.0*idx)/self.iterations
-      complete = "%0.1f%%" % percent
-      sys.stdout.write('\rSimulation ' + complete + " complete.")
-      sys.stdout.flush()
+      if idx % 30 == 0:
+        percent = (100.0*idx)/self.iterations
+        complete = "%0.1f%%" % percent
+        sys.stdout.write('\rSimulation ' + complete + " complete.")
+        sys.stdout.flush()
 
       (q, r) = self.plant.evolve(self.t_s, u)
       u = self.controller.get_duty_cycles()
       self.t_s += self.dt
-      self.t.append(self.t_s)
-      self.r.append(r)
-      self.q.append(q)
-      self.r_est.append(copy.deepcopy(self.estimator.r))
-      self.q_est.append(copy.deepcopy(self.estimator.q))
-      self.u.append(copy.deepcopy(u))
+
+      if idx % self.decimation == 0:
+        self.t.append(self.t_s)
+        self.r.append(r)
+        self.q.append(q)
+        self.r_est.append(copy.deepcopy(self.estimator.r))
+        self.q_est.append(copy.deepcopy(self.estimator.q))
+        self.u.append(copy.deepcopy(u))
 
   def visualize_chassis(self):
     gt0, gt1, gt2 = generate_body_frames(self.q)
     est0, est1, est2 = generate_body_frames(self.q_est)
-    compare(len(self.t), est0, est1, est2, gt0, gt1, gt2, self.decimation)
+    compare(len(self.t), est0, est1, est2, gt0, gt1, gt2, 1)
 
   def visualize_cm(self):
     x = lambda series: [v[0] for v in series]
