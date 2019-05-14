@@ -6,7 +6,7 @@ from quaternions import *
 def draw_body(axes, vectors, colors):
   line_collections = []
 
-  for m in xrange(len(vectors)):
+  for m in range(len(vectors)):
     vector = vectors[m]
 
     X = Y = Z = 0
@@ -59,7 +59,7 @@ def animate(n_vectors, q_e0, q_e1, q_e2, decimator, where="images"):
   line_collections = None
   count = 0
 
-  for n in xrange(n_vectors):
+  for n in range(n_vectors):
     percent = (100.0*n)/n_vectors
     complete = "%0.3f%%" % percent
     sys.stdout.write('\rAnimation ' + complete + " complete.")
@@ -104,7 +104,7 @@ def compare(n_vectors, r_e0, r_e1, r_e2, q_e0, q_e1, q_e2, decimator, where="ima
 
   line_collections = None
 
-  for n in xrange(n_vectors):
+  for n in range(n_vectors):
     percent = (100.0*n)/n_vectors
     complete = "%0.3f%%" % percent
     sys.stdout.write('\rAnimation ' + complete + " complete.")

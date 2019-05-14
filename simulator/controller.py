@@ -79,7 +79,7 @@ class Controller(object):
     u[3] = self.BASE_DUTY
     d = np.dot(self.D_inv, u)[0]
 
-    for k in xrange(4):
+    for k in range(4):
       if d[0,k] > 1.0:
         d[0,k] = 1.0
       elif d[0,k] < 0.0:

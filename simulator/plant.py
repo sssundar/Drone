@@ -312,7 +312,7 @@ class Plant(object):
     t = np.linspace(t_s, t_s+self.dt, 1+int(self.dt/(1.0/self.hz)))
     states = odeint(ddt_state, state_0, t=t)
 
-    for idx in xrange(1, len(states)):
+    for idx in range(1, len(states)):
       state_dt = states[idx]
       self.state["Omega"] = np.asarray([state_dt[0], state_dt[1], state_dt[2]])
       self.state["w"]["m1p2m3"] = state_dt[3]
@@ -411,7 +411,7 @@ def Test_FreeFall(spin, visual=False):
       }
   orientations = []
   cm = []
-  for k in xrange(len(t_s)):
+  for k in range(len(t_s)):
     (q, r) = quad.evolve(t_s[k], u)
     orientations.append(q)
     cm.append(r)

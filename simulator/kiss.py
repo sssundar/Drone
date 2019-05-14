@@ -54,7 +54,7 @@ def simulate(visualize=True):
                 0.0, 0.0, 0.0
               ])
 
-  for idx in xrange(n):
+  for idx in range(n):
     percent = (100.0*idx)/n
     complete = "%0.3f%%" % percent
     sys.stdout.write('\rSimulation ' + complete + " complete.")

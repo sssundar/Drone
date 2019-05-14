@@ -70,7 +70,7 @@ class Wiring(object):
 
   def simulate(self):
     u = self.controller.get_duty_cycles()
-    for idx in xrange(self.iterations):
+    for idx in range(self.iterations):
       if idx % 30 == 0:
         percent = (100.0*idx)/self.iterations
         complete = "%0.1f%%" % percent
@@ -138,7 +138,7 @@ class Wiring(object):
     plt.show()
 
 if __name__ == "__main__":
-  wiring = Wiring(iterations=1200, decimation=10)
+  wiring = Wiring(iterations=200, decimation=10)
   wiring.simulate()
   if (len(sys.argv) >= 2) and (sys.argv[1] == 'chassis'):
     # Install ImageMagick on Ubuntu then, after running this script, go to 'images' and run
