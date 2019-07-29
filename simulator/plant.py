@@ -89,21 +89,21 @@ class Plant(object):
       "p1m2m3" : -1,
       "m1m2p3" : 1 } # CW (-1) or CCW (1) spin direction of each propellor.
 
-    self.config["l_chassis"] = 0.05 # Length of chassis in meters
-    self.config["w_chassis"] = 0.05 # Width of chassis in meters
+    self.config["l_chassis"] = 0.075 # Length of chassis in meters
+    self.config["w_chassis"] = 0.075 # Width of chassis in meters
     self.config["h_chassis"] = 0.01 # Height of chassis in meters
-    self.config["m_chassis"] = 0.08 # Mass of chassis in kg
+    self.config["m_chassis"] = 0.116 # Mass of chassis in kg
     self.config["R_prop"] = { "m1p2m3" : 0.5*np.asarray([-self.config["l_chassis"], self.config["w_chassis"], self.config["h_chassis"]]),
                               "p1p2p3" : 0.5*np.asarray([self.config["l_chassis"], self.config["w_chassis"], self.config["h_chassis"]]),
                               "p1m2m3" : 0.5*np.asarray([self.config["l_chassis"], -self.config["w_chassis"], self.config["h_chassis"]]),
                               "m1m2p3" : 0.5*np.asarray([-self.config["l_chassis"], -self.config["w_chassis"], self.config["h_chassis"]])
                               } # Quad-frame vector (m) to CM of propellor-shaft system.
 
-    self.config["r_shaft"] = 0.0025 # Radius of the propellor shaft in meters
-    self.config["m_shaft"] = 0.002 # Mass of the propellor shaft in kg
+    self.config["r_shaft"] = 0.005 # Radius of the propellor shaft in meters
+    self.config["m_shaft"] = 0.005 # Mass of the propellor shaft in kg
     self.config["l_blade"] = 0.0254 # Length of propellor blade in meters
     self.config["w_blade"] = 0.005 # Width of propellor blade in meters
-    self.config["m_blade"] = 0.00025 # Mass of propellor blade in kg
+    self.config["m_blade"] = 0.000125 # Mass of propellor blade in kg
     self.config["m_prop"] = 2*self.config["m_blade"] + self.config["m_shaft"] # Mass of propellor-shaft system in kg
 
     self.config["J_prop"] = 0.5*self.config["m_shaft"]*(self.config["r_shaft"]**2) # Principal moment (kg m^2) about e3 axis of propellor-shaft system (symmetric across motors)
@@ -116,6 +116,9 @@ class Plant(object):
     self.config["J_chassis"][2,2] = self.config["l_chassis"]**2 + self.config["w_chassis"]**2
     self.config["J_chassis"] *= ((self.config["m_chassis"]/12) + self.config["m_prop"])
     self.config["J_chassis_inverse"] = np.linalg.inv(self.config["J_chassis"])
+
+    print("J_chassis")
+    print(self.config["J_chassis"])
 
     # Field Configuration
     # Note:
@@ -157,6 +160,11 @@ class Plant(object):
     self.config["B_thrust"] = (0.04*(-self.config["G"]))/(self.rpm_to_w(self.config["Max RPM Base"])**2) # w^2 to thrust (N) coefficient
     self.thrust_force = lambda w: ((self.config["B_thrust"] * (w**2)) * np.asarray([0,0,1]))
     self.drag_torque = lambda w: (self.config["B_drag"] * (w**2))
+
+    print("MAX_DRIVE_TORQUE")
+    print(self.config["T_prop"])
+    print("e1/e1_THRUST_MOMENT")
+    print((self.config["l_chassis"]/2)*(0.04*(-self.config["G"][2])))
 
     # IMU Misalignment Configuration
     # Note:
