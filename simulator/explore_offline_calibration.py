@@ -53,6 +53,8 @@ def gradient_f(q, a, b, m):
   # return np.array(np.dot(np.transpose(J_b(q, b)), f_b(q, b, m)))[0]
   return np.array(np.dot(np.transpose(J_gb(q, b)), f_gb(q, a, b, m)))[0]
 
+# TODO This has a bug! MCF assumes the magnetic field has only two axes (x,z). We need to correct for IMU/Quad misalignment in all three
+# for the 'second' field vector of the gyro (gravity already allows for errors in all three).
 def get_sensor_to_quad_frame_quaternion(w, a):  
   beta = np.pi/100
   q = [1, np.asarray([0,0,0])] # Initially we assume no rotation is required.
