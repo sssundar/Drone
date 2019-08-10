@@ -140,6 +140,7 @@ class Estimator(object):
     self.accel = self.offset_correction(sample)
     self.passthrough(t_s)
 
+  # TODO Align with bitbucket/sssundar/reva/state_estimator.py
   def update(self, w_b, m_b, a_b):
     # Ideally the synchronizer that replaces passthrough() guarantees a fixed tick, e.g. 10ms.
     dt = self.t_s - self.t_previous_s
