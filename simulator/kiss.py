@@ -22,7 +22,7 @@ def simulate(visualize=True):
   # Dynamics Configuration
   alpha = 2.45550709e+02
   beta = 3.87732955e+02
-  gamma = 5.10001156e-06
+  gamma = 0.335*2 # 5.10001156e-06
   torque = np.array([
     [-alpha, -alpha, alpha, alpha], 
     [-beta, beta, beta, -beta],
@@ -37,6 +37,12 @@ def simulate(visualize=True):
     [1., -1., 1., -1.],
     [1., 1., 1., 1.] ])
   D_inv = np.linalg.inv(D)
+  Dp = np.array([
+    [-alpha, -alpha, alpha, alpha], 
+    [-beta, beta, beta, -beta],
+    [-gamma, gamma, -gamma, gamma],
+    [1., 1., 1., 1.] ])
+  Dp_inv = np.linalg.inv(Dp)
   J = np.array([
     [ 1.50856451, -0.02084717,  0.02037978],
     [-0.02084717,  0.83391386,  0.09393599],
@@ -113,9 +119,18 @@ def simulate(visualize=True):
     u_dt = proportional + derivative
     us.append(u_dt)
 
-    delta = np.dot(reduced_torque_inv, u_dt[0:2])
-    yaw = 0.05 if (proportional[2] > 0) else -0.05
-    d_dt = np.dot(D_inv, np.array([delta[0], delta[1], yaw, 0.6]))
+    # delta = np.dot(reduced_torque_inv, u_dt[0:2])
+    # yaw = 0.2 if (proportional[2] > 0) else -0.2
+
+    # d_dt = np.dot(D_inv, np.array([delta[0], delta[1], yaw, 0.6]))
+
+    d_dt = np.dot(Dp_inv, np.array(list(u_dt)+[0.8]))
+    for k in range(4):
+      if d_dt[k] > 1.0:
+        d_dt[k] = 1.0
+      elif d_dt[k] < 0.0:
+        d_dt[k] = 0.0
+
     ds.append(d_dt)
 
   if visualize:
