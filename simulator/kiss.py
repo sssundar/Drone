@@ -22,7 +22,7 @@ def simulate(visualize=True):
   # Dynamics Configuration
   alpha = 2.45550709e+02
   beta = 3.87732955e+02
-  gamma = 0.335*2 # 5.10001156e-06
+  gamma = 0.335*2/0.1 # 5.10001156e-06
   torque = np.array([
     [-alpha, -alpha, alpha, alpha], 
     [-beta, beta, beta, -beta],
@@ -117,6 +117,7 @@ def simulate(visualize=True):
     derivative = -kd*np.dot(J, w_dt)
 
     u_dt = proportional + derivative
+    # u_dt = np.maximum(np.minimum(u_dt, 0.25), -0.25)
     us.append(u_dt)
 
     # delta = np.dot(reduced_torque_inv, u_dt[0:2])
@@ -137,8 +138,11 @@ def simulate(visualize=True):
     e0, e1, e2 = generate_body_frames(qs)
     animate(len(qs), e0, e1, e2, 5)
   else:
-    plt.plot(np.asarray(range(n+1))*dt_s, ds)
-    plt.legend(["d1", "d2", "d3", "d4"])
+    fig, ax = plt.subplots(2,1,sharex=True)
+    ax[0].plot(np.asarray(range(n+1))*dt_s, ds)
+    ax[0].legend(["d1", "d2", "d3", "d4"])
+    ax[1].plot(np.asarray(range(n+1))*dt_s, us)
+    ax[1].legend(["x", "y", "z"])
     plt.show()
 
 if __name__ == "__main__":
