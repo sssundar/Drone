@@ -15,9 +15,9 @@ def simulate(visualize=True):
   dt_s = 1.0 / f_hz
   t_s = 0.0
   n = 1000
-  q_0 = np.array([1,1,-1])
+  q_0 = np.array([0,0,1])
   q_0 = q_0 / vector_norm(q_0)
-  q_0 = axis_angle_to_quaternion(q_0, np.pi/2)
+  q_0 = axis_angle_to_quaternion(q_0, np.pi)
 
   # Dynamics Configuration
   alpha = 2.45550709e+02
@@ -104,7 +104,6 @@ def simulate(visualize=True):
 
     # Controller Update
     q_error = quaternion_product(p=q_ref, q=quaternion_inverse(q_dt), normalize=True)
-
     theta = np.arccos(q_error[0])
     sin_theta = np.sin(theta)
     if abs(sin_theta) < 1e-4:
@@ -117,7 +116,8 @@ def simulate(visualize=True):
     derivative = -kd*np.dot(J, w_dt)
 
     u_dt = proportional + derivative
-    # u_dt = np.maximum(np.minimum(u_dt, 0.25), -0.25)
+    CLIP = 1.2
+    u_dt = np.maximum(np.minimum(u_dt, CLIP), -CLIP)
     us.append(u_dt)
 
     # delta = np.dot(reduced_torque_inv, u_dt[0:2])
