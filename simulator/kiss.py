@@ -14,7 +14,7 @@ def simulate(visualize=True):
   f_hz = 20.
   dt_s = 1.0 / f_hz
   t_s = 0.0
-  n = 1000
+  n = 2000
   q_0 = np.array([0,0,1])
   q_0 = q_0 / vector_norm(q_0)
   q_0 = axis_angle_to_quaternion(q_0, np.pi)
@@ -50,9 +50,13 @@ def simulate(visualize=True):
   J_inv = np.linalg.inv(J)
 
   # Controller Configuration
-  q_ref = [1, np.array([0.0, 0.0, 0.0])]
+  # q_ref = [1, np.array([0.0, 0.0, 0.0])]
+  q_ref = [0.1927032619714737, np.array([0.        , 0.        , 0.98125708])]
+  # q_ref = np.array([0,0,1])
+  # q_ref = q_ref / vector_norm(q_ref)
+  # q_ref = axis_angle_to_quaternion(q_ref, np.pi/2)
   kp = 10.0
-  kd = 2.0
+  kd = 20.0
 
   # Observer
   qs = [q_0]
@@ -135,7 +139,7 @@ def simulate(visualize=True):
     ds.append(d_dt)
 
   if visualize:
-    e0, e1, e2 = generate_body_frames(qs)
+    e0, e1, e2 = generate_body_frames([q_ref] + qs)
     animate(len(qs), e0, e1, e2, 5)
   else:
     fig, ax = plt.subplots(2,1,sharex=True)
