@@ -14,7 +14,7 @@ def simulate(visualize=True):
   f_hz = 20.
   dt_s = 1.0 / f_hz
   t_s = 0.0
-  n = 2000
+  n = 1000
   q_0 = np.array([0,0,1])
   q_0 = q_0 / vector_norm(q_0)
   q_0 = axis_angle_to_quaternion(q_0, np.pi)
@@ -56,7 +56,7 @@ def simulate(visualize=True):
   # q_ref = q_ref / vector_norm(q_ref)
   # q_ref = axis_angle_to_quaternion(q_ref, np.pi/2)
   kp = 10.0
-  kd = 20.0
+  kd = 2.0
 
   # Observer
   qs = [q_0]
@@ -107,7 +107,7 @@ def simulate(visualize=True):
     ws.append(w_dt)
 
     # Controller Update
-    q_error = quaternion_product(p=q_ref, q=quaternion_inverse(q_dt), normalize=True)
+    q_error = quaternion_product(p=quaternion_inverse(q_dt), q=q_ref, normalize=True)
     theta = np.arccos(q_error[0])
     sin_theta = np.sin(theta)
     if abs(sin_theta) < 1e-4:
