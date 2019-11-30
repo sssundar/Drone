@@ -14,7 +14,7 @@ def simulate(visualize=True):
   f_hz = 20.
   dt_s = 1.0 / f_hz
   t_s = 0.0
-  n = 1000
+  n = 200
   q_0 = np.array([0,0,1])
   q_0 = q_0 / vector_norm(q_0)
   q_0 = axis_angle_to_quaternion(q_0, np.pi)
@@ -22,26 +22,24 @@ def simulate(visualize=True):
   # Dynamics Configuration
   alpha = 2.45550709e+02
   beta = 3.87732955e+02
-  gamma = 0.335*2/0.1 # 5.10001156e-06
+  gamma = 0.335*2/0.1
+  asymmetry = 0.1
   torque = np.array([
-    [-alpha, -alpha, alpha, alpha], 
-    [-beta, beta, beta, -beta],
+    [-alpha*(1-asymmetry), -alpha*(1+asymmetry), alpha*(1+asymmetry), alpha*(1-asymmetry)], 
+    [-beta*(1-asymmetry), beta*(1+asymmetry), beta*(1+asymmetry), -beta*(1-asymmetry)],
     [-gamma, gamma, -gamma, gamma] ])
-  reduced_torque = np.array([
-    [alpha, alpha],
-    [beta, -beta] ])
-  reduced_torque_inv = np.linalg.inv(reduced_torque)
-  D = np.array([
-    [-1., 0., 1., 0.],
-    [0., -1., 0., 1.],
-    [1., -1., 1., -1.],
-    [1., 1., 1., 1.] ])
-  D_inv = np.linalg.inv(D)
+  # Dp = np.array([
+  #   [-alpha, -alpha, alpha, alpha], 
+  #   [-beta, beta, beta, -beta],
+  #   [-gamma, gamma, -gamma, gamma],
+  #   [1., 1., 1., 1.] ])
+  asymmetry = 0.09
   Dp = np.array([
-    [-alpha, -alpha, alpha, alpha], 
-    [-beta, beta, beta, -beta],
+    [-alpha*(1-asymmetry), -alpha*(1+asymmetry), alpha*(1+asymmetry), alpha*(1-asymmetry)], 
+    [-beta*(1-asymmetry), beta*(1+asymmetry), beta*(1+asymmetry), -beta*(1-asymmetry)],
     [-gamma, gamma, -gamma, gamma],
-    [1., 1., 1., 1.] ])
+    [1., 1., 1., 1.]
+    ])
   Dp_inv = np.linalg.inv(Dp)
   J = np.array([
     [ 1.50856451, -0.02084717,  0.02037978],
