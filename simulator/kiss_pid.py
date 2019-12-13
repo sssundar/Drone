@@ -145,7 +145,7 @@ if __name__ == "__main__":
   elif sys.argv[1] == "eq":
     equilibrium(ki=10)
   elif sys.argv[1] == "sim":
-    kp = 60.
+    kp = 120.
     kd = 40.
     ki = 20.
     equilibrium(ki)

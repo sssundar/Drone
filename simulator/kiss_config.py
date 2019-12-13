@@ -1,7 +1,7 @@
 import numpy as np
 
 dt_s = 0.05
-n = 1000
+n = 100
 
 alpha = 1.
 theta_ref = 0.
